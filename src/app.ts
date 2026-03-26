@@ -5,11 +5,19 @@ import { cors } from "hono/cors";
 const app = new Hono();
 
 // ✅ Allow ALL CORS
+
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://goyal-enterprices.vercel.app",
+];
+
 app.use("*", cors({
-  origin: "http://localhost:5173", // ❗ exact frontend URL
-  credentials: true,               // 🔥 MUST for cookies
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
+  origin: (origin) => {
+    if (!origin) return origin; // allow Postman / server calls
+    return allowedOrigins.includes(origin) ? origin : "";
+  },
+  credentials: true,
 }));
 
 app.get("/", (c) => {
