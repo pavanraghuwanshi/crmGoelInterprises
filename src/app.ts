@@ -6,9 +6,10 @@ const app = new Hono();
 
 // ✅ Allow ALL CORS
 app.use("*", cors({
-  origin: "*",              // sab allow
+  origin: "http://localhost:5173", // ❗ exact frontend URL
+  credentials: true,               // 🔥 MUST for cookies
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowHeaders: ["*"],
+  allowHeaders: ["Content-Type", "Authorization"],
 }));
 
 app.get("/", (c) => {
