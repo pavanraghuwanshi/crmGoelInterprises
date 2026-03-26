@@ -1,7 +1,15 @@
 import { Hono } from "hono";
 import userRoutes from "../src/modules/user/user.route";
+import { cors } from "hono/cors";
 
 const app = new Hono();
+
+// ✅ Allow ALL CORS
+app.use("*", cors({
+  origin: "*",              // sab allow
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["*"],
+}));
 
 app.get("/", (c) => {
   return c.json({ message: "CRM API running 🚀" });
