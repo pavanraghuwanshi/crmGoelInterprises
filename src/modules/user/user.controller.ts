@@ -3,6 +3,8 @@ import { User } from "../../modules/user/user.model.ts";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "../auth/auth.type.ts";
+import { setCookie } from "hono/cookie";
+
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -79,33 +81,75 @@ export const register = async (c: Context) => {
 
 // ✅ Login
 
+// export const login = async (c: Context) => {
+//   const body = await c.req.json<LoginBody>();
+//   const { email, password } = body;
+
+//   if (!email || !password) {
+//     return c.json(
+//       { message: "Email and password required" },
+//       400
+//     );
+//   }
+
+//   const user = await User.findOne({ email }).exec();
+
+//   if (!user) {
+//     return c.json(
+//       { message: "User not found" },
+//       404
+//     );
+//   }
+
+//   const isMatch = await bcrypt.compare(password, user.password);
+
+//   if (!isMatch) {
+//     return c.json(
+//       { message: "Invalid credentials" },
+//       401
+//     );
+//   }
+
+//   const token = jwt.sign(
+//     {
+//       id: user._id.toString(),
+//       role: user.role,
+//     } as JwtPayload,
+//     getJwtSecret(),
+//     { expiresIn: "7d" }
+//   );
+
+//   return c.json({
+//     token,
+//     user: {
+//       id: user._id,
+//       email: user.email,
+//       role: user.role,
+//     },
+//   });
+// };
+
+
+
+
 export const login = async (c: Context) => {
   const body = await c.req.json<LoginBody>();
   const { email, password } = body;
 
   if (!email || !password) {
-    return c.json(
-      { message: "Email and password required" },
-      400
-    );
+    return c.json({ message: "Email and password required" }, 400);
   }
 
   const user = await User.findOne({ email }).exec();
 
   if (!user) {
-    return c.json(
-      { message: "User not found" },
-      404
-    );
+    return c.json({ message: "User not found" }, 404);
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
-    return c.json(
-      { message: "Invalid credentials" },
-      401
-    );
+    return c.json({ message: "Invalid credentials" }, 401);
   }
 
   const token = jwt.sign(
@@ -117,8 +161,24 @@ export const login = async (c: Context) => {
     { expiresIn: "7d" }
   );
 
+  // ✅ 🍪 Set Cookie
+  // setCookie(c, "token", token, {
+  //   httpOnly: true,        // 🔒 cannot access via JS (secure)
+  //   secure: true,          // HTTPS only (production)
+  //   sameSite: "Strict",    // CSRF protection
+  //   maxAge: 60 * 60 * 24 * 7, // 7 days
+  //   path: "/",
+  // });
+      setCookie(c, "token", token, {
+      httpOnly: true,
+      secure: false,        // ❗ change here
+      sameSite: "Lax",      // better for dev
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+
   return c.json({
-    token,
+    message: "Login successful",
     user: {
       id: user._id,
       email: user.email,
