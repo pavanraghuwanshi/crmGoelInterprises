@@ -169,13 +169,12 @@ export const login = async (c: Context) => {
   //   maxAge: 60 * 60 * 24 * 7, // 7 days
   //   path: "/",
   // });
-      setCookie(c, "token", token, {
-      httpOnly: true,
-      secure: false,        // ❗ change here
-      sameSite: "Lax",      // better for dev
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
+    setCookie(c, "token", token, {
+    httpOnly: true,
+    secure: true,      // Render (HTTPS)
+    sameSite: "None",  // cross-origin ke liye
+    path: "/",
+  });
 
   return c.json({
     message: "Login successful",
