@@ -8,6 +8,7 @@ import { decryptPassword, encryptPassword } from "../../utils/crypto.ts";
 import { verifyToken } from "../../middleware/auth.middleware.ts";
 import mongoose from "mongoose";
 import { Types } from "mongoose";
+import { EmployeeId } from "./employeeId.model.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -19,6 +20,7 @@ interface RegisterBody {
   role?: "admin" | "hr" | "user";
   createdBy:Types.ObjectId;
   employeeObjId:Types.ObjectId;
+  uniqueId:number;
 }
 
 
@@ -36,35 +38,78 @@ const getJwtSecret = (): string => {
 };
 
 
+//  check duplicate
+const checkDuplicateUser = async (
+  email?: string,
+  uniqueId?: number,
+  excludeId?: string
+) => {
+  const orConditions = [];
+
+  if (email) orConditions.push({ email });
+  if (uniqueId) orConditions.push({ uniqueId });
+
+  if (orConditions.length === 0) return null;
+
+  const query: any = {
+    $or: orConditions,
+  };
+
+  if (excludeId) {
+    query._id = { $ne: excludeId };
+  }
+
+  const existing = await User.findOne(query);
+
+  if (!existing) return null;
+
+  if (email && existing.email === email) return "email";
+  if (uniqueId && existing.uniqueId === uniqueId) return "uniqueId";
+
+  return null;
+};
+
+
 // ✅ Register
 
 export const register = async (c: Context) => {
   try {
     const body = await c.req.json<RegisterBody>();
-    const { name, email, password, role, createdBy,employeeObjId } = body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      createdBy,
+      employeeObjId,
+      uniqueId,
+    } = body;
 
     if (!name || !email || !password) {
       return c.json({ message: "All fields are required" }, 400);
     }
 
-    // 👉 get logged in user
-    const auth = await verifyToken(c.req.raw);
+    // ✅ GET USER FROM CONTEXT (FIX)
+    const loggedInUser = c.get("user");
 
-    if ("error" in auth) {
-      return c.json({ message: auth.error }, 401);
+
+    if (!loggedInUser) {
+      return c.json({ message: "Unauthorized" }, 401);
     }
 
-    const loggedInUser = auth.user; // ⚠️ FIX (no .user)
-
-    // ❗ safe role
+    // ✅ safe role
     const safeRole =
       role && ["admin", "hr", "user"].includes(role) ? role : "user";
 
     // 👉 check existing user
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return c.json({ message: "User already exists" }, 400);
-    }
+      const duplicate = await checkDuplicateUser(body.email, body.uniqueId);
+
+      if (duplicate === "email") {
+        return c.json({ message: "Email already exists" }, 400);
+      }
+      if (duplicate === "uniqueId") {
+        return c.json({ message: "Unique ID already exists" }, 400);
+      }
 
     // 👉 encrypt password
     const encryptedPassword = await encryptPassword(password);
@@ -73,18 +118,16 @@ export const register = async (c: Context) => {
     let finalCreatedBy;
 
     if (loggedInUser.role === "admin" && createdBy) {
-      // ✅ admin can assign anyone
       finalCreatedBy = createdBy;
     } else {
-      // ✅ hr/user → always self
       finalCreatedBy = loggedInUser.id;
     }
 
-        // 🔥 VALIDATE EMPLOYEE
-    let employeeRef = null;
+    // 🔥 VALIDATE EMPLOYEE
+    let employeeRef: any = undefined;
 
     if (employeeObjId) {
-      const employee = await Employee.findById(employeeObjId);
+      const employee = await EmployeeId.findById(employeeObjId);
 
       if (!employee) {
         return c.json({ message: "Invalid employee ID" }, 400);
@@ -100,7 +143,8 @@ export const register = async (c: Context) => {
       password: encryptedPassword,
       role: safeRole,
       createdBy: finalCreatedBy,
-      employeeObjId:employeeObjId
+      employeeObjId: employeeRef,
+      uniqueId: uniqueId,
     });
 
     return c.json(
@@ -108,7 +152,8 @@ export const register = async (c: Context) => {
         id: user._id,
         email: user.email,
         role: user.role,
-        createdBy: user.createdBy, // ✅ clean
+        createdBy: user.createdBy,
+        uniqueId:uniqueId
       },
       201
     );
@@ -133,7 +178,7 @@ export const getUsers = async (c: Context) => {
 
     // 👉 Get users
     const users = await User.find(filter)
-      .select("email role password")
+      .select("email role password uniqueId")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -156,6 +201,7 @@ export const getUsers = async (c: Context) => {
         email: u.email,
         role: u.role,
         password: decryptedPassword,
+        uniqueId:u.uniqueId
       };
     });
 
@@ -227,15 +273,14 @@ export const updateUser = async (c: Context) => {
         return c.json({ message: "Invalid email format" }, 400);
       }
 
-      const existingUser = await User.findOne({
-        email: body.email,
-        _id: { $ne: id },
-      });
+      const duplicate = await checkDuplicateUser(body.email, body.uniqueId, id);
 
-      if (existingUser) {
-        return c.json({ message: "Email already in use" }, 400);
+      if (duplicate === "email") {
+        return c.json({ message: "Email already exists" }, 400);
       }
-    }
+      if (duplicate === "uniqueId") {
+        return c.json({ message: "Unique ID already exists" }, 400);
+      }
 
     // 👉 Role validation
     if (body.role !== undefined) {
@@ -297,7 +342,8 @@ export const updateUser = async (c: Context) => {
       },
       200
     );
-  } catch (error) {
+  }
+ }catch (error) {
     console.error("Update Error:", error);
     return c.json({ message: "Internal Server Error" }, 500);
   }

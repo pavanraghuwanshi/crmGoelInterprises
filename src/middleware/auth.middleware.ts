@@ -1,8 +1,13 @@
 import jwt from "jsonwebtoken";
+import type { Context, Next } from "hono";
 import type { JwtPayload } from "../modules/auth/auth.type.ts";
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
+// ✅ Extend Hono Context Variables (for type safety)
+export type Variables = {
+  user: JwtPayload;
+};
 
+// ✅ Get JWT Secret Safely
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
 
@@ -13,43 +18,60 @@ function getJwtSecret(): string {
   return secret;
 }
 
-// ✅ Verify Token
-export const verifyToken = async (req: Request) => {
-
-     const authHeader = req.headers.get("authorization");
-
-     if (!authHeader) {
-     return { error: "Unauthorized" };
-     }
-
-     const [bearer, token] = authHeader.split(" ");
-
-     if (bearer !== "Bearer" || !token) {
-     return { error: "Invalid token" };
-     }
-
+// ✅ Verify Token Middleware
+export const verifyToken = async (c: Context, next: Next) => {
   try {
-    const decoded = jwt.verify(token, getJwtSecret());
-     if (
-     typeof decoded !== "object" ||
-     !("id" in decoded) ||
-     !("role" in decoded)
-     ) {
-     return { error: "Invalid token payload" };
-     }
+    const authHeader = c.req.header("authorization");
 
-const user: JwtPayload = decoded as JwtPayload;
-  } catch (err) {
-    return { error: "Invalid token" };
+    if (!authHeader) {
+      return c.json({ message: "No token provided" }, 401);
+    }
+
+    const [bearer, token] = authHeader.split(" ");
+
+    if (bearer !== "Bearer" || !token) {
+      return c.json({ message: "Invalid token format" }, 401);
+    }
+
+    const decoded = jwt.verify(token, getJwtSecret());
+
+    // ✅ Validate payload structure
+    if (
+      typeof decoded !== "object" ||
+      !("id" in decoded) ||
+      !("role" in decoded)
+    ) {
+      return c.json({ message: "Invalid token payload" }, 401);
+    }
+
+    const user = decoded as JwtPayload;
+
+    // ✅ Store user in context
+    c.set("user", user);
+
+    await next();
+  } catch (error) {
+    return c.json({ message: "Unauthorized" }, 401);
   }
 };
 
-// ✅ Role Guard
+// ✅ Role-based Authorization Middleware
 export const authorizeRoles = (roles: JwtPayload["role"][]) => {
-  return (user: JwtPayload) => {
-    if (!roles.includes(user.role)) {
-      return { error: "Forbidden" };
+  return async (c: Context, next: Next) => {
+    try {
+      const user = c.get("user") as JwtPayload;
+
+      if (!user) {
+        return c.json({ message: "Unauthorized" }, 401);
+      }
+
+      if (!roles.includes(user.role)) {
+        return c.json({ message: "Forbidden" }, 403);
+      }
+
+      await next();
+    } catch (error) {
+      return c.json({ message: "Authorization error" }, 403);
     }
-    return { success: true };
   };
 };

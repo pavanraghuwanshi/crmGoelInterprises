@@ -14,6 +14,7 @@ export interface IUser extends Document {
   role: "admin" | "hr" | "user";
   createdBy:Types.ObjectId,
   employeeObjId:Types.ObjectId,
+  uniqueId:Number,
 
 }
 
@@ -44,6 +45,11 @@ const userSchema = new Schema<IUser>({
    employeeObjId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Employee", // ✅ LINK
+  },
+  uniqueId: {
+    type: Number,
+    required: true,
+    unique: true,
   },
 });
 
