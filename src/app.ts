@@ -2,7 +2,9 @@ import { Hono } from "hono";
 import userRoutes from "../src/modules/user/user.route";
 import attendanceRoutes from "../src/modules/attendance/attendance.route";
 import payrollRoutes from "../src/modules/payroll/payroll.route";
+import docCenterRoutes from "../src/modules/doccenter/doccenter.route";
 import { cors } from "hono/cors";
+import { serveStatic } from "hono/bun";
 
 const app = new Hono();
 
@@ -26,6 +28,14 @@ app.get("/", (c) => {
   return c.json({ message: "CRM API running 🚀" });
 });
 
+// 📁 serve static files from uploads folder
+app.use(
+  "/api/uploads/*",
+  serveStatic({
+    root: "./uploads",
+    rewriteRequestPath: (path) => path.replace(/^\/api\/uploads/, ""),
+  })
+);
 
 // 👤 user routes
 app.route("/api/user", userRoutes);
@@ -35,5 +45,8 @@ app.route("/api/attendance", attendanceRoutes);
 
 // 💰 payroll routes
 app.route("/api/payroll", payrollRoutes);
+
+// 📁 doccenter routes
+app.route("/api/doccenter", docCenterRoutes);
 
 export default app;
