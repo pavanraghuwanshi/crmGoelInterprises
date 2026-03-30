@@ -3,8 +3,6 @@ import { verifyToken } from "../../middleware/auth.middleware";
 import { 
   createAttendancePolicy, 
   getAttendancePolicies,
-  createCompanyCalendarBatch,
-  getCompanyCalendar,
   uploadBiometricData,
   getAttendances
 } from "./attendance.controller";
@@ -17,9 +15,6 @@ attendanceRoutes.use("*", verifyToken);
 attendanceRoutes.post("/policy", createAttendancePolicy);
 attendanceRoutes.get("/policy", getAttendancePolicies);
 
-// calendar
-attendanceRoutes.post("/calendar", createCompanyCalendarBatch);
-attendanceRoutes.get("/calendar", getCompanyCalendar);
 
 // biometric
 attendanceRoutes.post("/upload", uploadBiometricData);

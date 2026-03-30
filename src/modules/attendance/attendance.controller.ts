@@ -6,6 +6,11 @@ import { User } from "../user/user.model";
 import type { JwtPayload } from "../auth/auth.type";
 import mongoose from "mongoose";
 
+
+
+// --- Attendance Policy ---
+
+
 export const createAttendancePolicy = async (c: Context) => {
   try {
     const user = c.get("user") as JwtPayload;
@@ -27,25 +32,9 @@ export const getAttendancePolicies = async (c: Context) => {
   }
 };
 
-export const createCompanyCalendarBatch = async (c: Context) => {
-  try {
-    const body = await c.req.json();
-    // Expect body.dates = [{date, isHoliday, description}]
-    const inserted = await CalendarDay.insertMany(body.dates);
-    return c.json({ message: "Calendar updated", inserted }, 201);
-  } catch (error: any) {
-    return c.json({ message: error.message }, 500);
-  }
-};
 
-export const getCompanyCalendar = async (c: Context) => {
-  try {
-    const calendar = await CalendarDay.find().sort({ date: 1 });
-    return c.json({ calendar }, 200);
-  } catch (error: any) {
-    return c.json({ message: error.message }, 500);
-  }
-};
+
+
 
 // --- Attendance Biometric File Upload Processing ---
 
