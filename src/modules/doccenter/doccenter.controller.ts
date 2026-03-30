@@ -244,3 +244,45 @@ export const deleteDocument = async (c: Context) => {
     return c.json({ error: error.message || "Failed to delete document" }, 500);
   }
 };
+
+export const deleteDocumentFiles = async (c: Context) => {
+  try {
+    const { documentId, fileUrls } = await c.req.json<{ documentId: string, fileUrls: string[] }>();
+
+    console.log("documentId",documentId)
+    if (!documentId || !fileUrls || !Array.isArray(fileUrls)) {
+      return c.json({ error: "documentId and an array of fileUrls are required" }, 400);
+    }
+
+    const doc = await DocCenter.findById(documentId);
+    if (!doc) {
+      return c.json({ error: "Document not found" }, 404);
+    }
+
+    const remainingFiles = doc.files.filter(f => !fileUrls.includes(f));
+    const filesToDelete = doc.files.filter(f => fileUrls.includes(f));
+
+    // Delete static files from disk
+    for (const fileRelativePath of filesToDelete) {
+      const fullPath = path.join(process.cwd(), fileRelativePath.startsWith('/') ? fileRelativePath.substring(1) : fileRelativePath);
+      if (fs.existsSync(fullPath)) {
+        try {
+          fs.unlinkSync(fullPath);
+        } catch (err) {
+          console.error(`Failed to delete file: ${fullPath}`, err);
+        }
+      }
+    }
+
+    doc.files = remainingFiles;
+    await doc.save();
+
+    return c.json({
+      message: "Specified files deleted successfully",
+      data: doc
+    });
+  } catch (error: any) {
+    console.error("Delete files error:", error);
+    return c.json({ error: error.message || "Failed to delete files" }, 500);
+  }
+};
