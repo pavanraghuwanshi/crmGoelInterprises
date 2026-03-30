@@ -3,6 +3,7 @@ import userRoutes from "../src/modules/user/user.route";
 import attendanceRoutes from "../src/modules/attendance/attendance.route";
 import payrollRoutes from "../src/modules/payroll/payroll.route";
 import { cors } from "hono/cors";
+import companyCalendarRouter from "./modules/attendance/companyCalendar.route";
 
 const app = new Hono();
 
@@ -32,6 +33,7 @@ app.route("/api/user", userRoutes);
 
 // 📆 attendance routes
 app.route("/api/attendance", attendanceRoutes);
+app.route("/api/company-calendar", companyCalendarRouter);
 
 // 💰 payroll routes
 app.route("/api/payroll", payrollRoutes);

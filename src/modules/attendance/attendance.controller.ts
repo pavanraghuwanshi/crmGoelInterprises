@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { AttendancePolicy } from "./attendancePolicy.model";
-import { CompanyCalendar } from "./companyCalendar.model";
+import { CalendarDay } from "./companyCalendar.model";
 import { Attendance } from "./attendance.model";
 import { User } from "../user/user.model";
 import type { JwtPayload } from "../auth/auth.type";
@@ -31,7 +31,7 @@ export const createCompanyCalendarBatch = async (c: Context) => {
   try {
     const body = await c.req.json();
     // Expect body.dates = [{date, isHoliday, description}]
-    const inserted = await CompanyCalendar.insertMany(body.dates);
+    const inserted = await CalendarDay.insertMany(body.dates);
     return c.json({ message: "Calendar updated", inserted }, 201);
   } catch (error: any) {
     return c.json({ message: error.message }, 500);
@@ -40,7 +40,7 @@ export const createCompanyCalendarBatch = async (c: Context) => {
 
 export const getCompanyCalendar = async (c: Context) => {
   try {
-    const calendar = await CompanyCalendar.find().sort({ date: 1 });
+    const calendar = await CalendarDay.find().sort({ date: 1 });
     return c.json({ calendar }, 200);
   } catch (error: any) {
     return c.json({ message: error.message }, 500);
