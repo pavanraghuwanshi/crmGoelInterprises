@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import userRoutes from "../src/modules/user/user.route";
+import attendanceRoutes from "../src/modules/attendance/attendance.route";
+import payrollRoutes from "../src/modules/payroll/payroll.route";
 import { cors } from "hono/cors";
 
 const app = new Hono();
@@ -27,4 +29,11 @@ app.get("/", (c) => {
 
 // 👤 user routes
 app.route("/api/user", userRoutes);
+
+// 📆 attendance routes
+app.route("/api/attendance", attendanceRoutes);
+
+// 💰 payroll routes
+app.route("/api/payroll", payrollRoutes);
+
 export default app;

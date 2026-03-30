@@ -1,0 +1,109 @@
+PAYROLL 
+ 
+HEADS: 
+•    BASIC 
+•    ESI EMPLOYEE  
+•    PF EMPLOYEE  
+•    ESI EMPLOYER 
+•    PF EMPLOYER 
+•    HRA 
+•    CONVEYANCE  
+•    LWF EMPLOYEE  
+•    LWF EMPLOYER 
+ 
+ 
+SUNDAY POLICY: 
+1.    Applicability 
+This policy applies to all workers whose standard working schedule falls between Monday to 
+Saturday. 
+2.    General Rule 
+Sunday shall be treated as a paid weekly off, subject to attendance conditions outlined 
+below. 
+3.   Eligibility Criteria 
+A. Full Attendance (6 Days: Monday–Saturday) 
+• 
+If an employee works all 6 days in a week, they will be: 
+o 
+Eligible for full paid Sunday of that week. 
+B. Partial Attendance (5 Days in a Week) 
+A special rolling rule applies: 
+• 
+If an employee works 5 days in a week: 
+o 
+They will be eligible for paid Sunday, provided the previous week did NOT 
+also have only 5 working days. 
+• 
+If an employee works 5 days for two consecutive weeks: 
+----------------Page (0) Break----------------
+o 
+Week 1: Sunday → Paid 
+o 
+Week 2: Sunday → Not Paid 
+• 
+If the employee continues working 5 days in Week 3: 
+o 
+Week 3 Sunday → Paid again 
+      In simple terms: 
+• 
+Paid Sunday is given for alternate weeks when attendance is consistently 5 days. 
+ 
+5. Summary Table 
+Week        Days Worked    Sunday Paid? 
+Week 1    6 days                     Yes 
+Week 1    5 days                     Yes 
+Week 2    5 days                    No 
+Week 3    5 days                     Yes 
+Week 4    5 days                    No 
+ 
+ 
+OVERTIME POLICY (THRESHOLD-BASED) 
+1. Objective 
+To define overtime eligibility based on actual working time beyond scheduled duty hours, 
+with a minimum threshold requirement. 
+2. Overtime Eligibility Rule 
+A. Minimum Threshold Condition 
+• 
+Overtime will only be applicable if extra working time exceeds 30 minutes. 
+• 
+Any extra time up to 30 minutes (≤30 mins) will not be considered for overtime. 
+3. Overtime Calculation 
+A. Post Shift (After Off Time) 
+• 
+If an employee stays beyond their scheduled off time: 
+----------------Page (1) Break----------------
+Extra Time Worked      Overtime Eligibility 
+Up to 30 minutes             Not Paid 
+More than 30 minutes     Full extra time paid 
+Example: 
+• 
+Off time: 7:00 PM 
+o 
+Leaves at 7:20 PM →    No overtime 
+o 
+Leaves at 7:31 PM →     31 minutes overtime paid 
+ 
+B. Pre Shift (Before In Time) 
+• 
+If an employee starts work before their scheduled in time: 
+Early Time                                Overtime Eligibility 
+Up to 30 minutes early             Not Paid 
+More than 30 minutes early     Full extra time paid 
+Example: 
+• 
+In time: 9:00 AM 
+o 
+Arrives at 8:40 AM →    No overtime 
+o 
+Arrives at 8:29 AM →     31 minutes overtime paid 
+ 
+4. Important Conditions 
+• 
+This kind of Overtime must be approved by management/supervisor. 
+• 
+Unauthorized early/late presence will not qualify for overtime. 
+ 
+5. Key Principle 
+      Overtime starts only after crossing the 30-minute threshold, and once crossed, entire 
+extra duration is counted. 
+ 
+----------------Page (2) Break----------------
