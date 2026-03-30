@@ -152,10 +152,10 @@ export const patchDocument = async (c: Context) => {
         }
       }
 
-      // Handle file updates
+      // Handle file updates — append new files to existing ones
       const files = formData.getAll("files");
       if (files.length > 0 && files[0] instanceof File) {
-        const uploadedFilePaths: string[] = [];
+        const newFilePaths: string[] = [];
         const uploadDir = path.join(process.cwd(), "uploads", "doccenter");
         
         if (!fs.existsSync(uploadDir)) {
@@ -169,33 +169,27 @@ export const patchDocument = async (c: Context) => {
             const uniqueName = `${timestamp}-${sanitizedName}`;
             const filePath = path.join(uploadDir, uniqueName);
             await Bun.write(filePath, file);
-            uploadedFilePaths.push(`/uploads/doccenter/${uniqueName}`);
+            newFilePaths.push(`/uploads/doccenter/${uniqueName}`);
           }
         }
-        
-        // If files are provided, we replace the existing ones (common pattern for patch)
-        // Or you might want to append? Let's assume replace for now as per "update images"
-        updateData.files = uploadedFilePaths;
-        
-        // Optional: Delete old files if they are being replaced
-        const oldDoc = await DocCenter.findById(id);
-        if (oldDoc && oldDoc.files) {
-           for (const oldFile of oldDoc.files) {
-             const fullPath = path.join(process.cwd(), oldFile.startsWith('/') ? oldFile.substring(1) : oldFile);
-             if (fs.existsSync(fullPath)) {
-               try { fs.unlinkSync(fullPath); } catch {}
-             }
-           }
-        }
+
+        // Push new files to the existing files array (do NOT replace or delete old files)
+        updateData.$push = { files: { $each: newFilePaths } };
       }
     } else {
       // Regular JSON update
       updateData = await c.req.json();
     }
 
+    // Separate $push from $set so MongoDB handles both operators correctly
+    const { $push, ...setFields } = updateData;
+    const mongoUpdate: any = {};
+    if (Object.keys(setFields).length > 0) mongoUpdate.$set = setFields;
+    if ($push) mongoUpdate.$push = $push;
+
     const updatedDoc = await DocCenter.findByIdAndUpdate(
       id,
-      { $set: updateData },
+      mongoUpdate,
       { new: true, runValidators: true }
     );
 
@@ -249,7 +243,6 @@ export const deleteDocumentFiles = async (c: Context) => {
   try {
     const { documentId, fileUrls } = await c.req.json<{ documentId: string, fileUrls: string[] }>();
 
-    console.log("documentId",documentId)
     if (!documentId || !fileUrls || !Array.isArray(fileUrls)) {
       return c.json({ error: "documentId and an array of fileUrls are required" }, 400);
     }
