@@ -4,7 +4,8 @@ import {
   createAttendancePolicy, 
   getAttendancePolicies,
   uploadBiometricData,
-  getAttendances
+  getAttendances,
+  getUserMonthlyAttendance
 } from "./attendance.controller";
 
 const attendanceRoutes = new Hono();
@@ -19,5 +20,6 @@ attendanceRoutes.get("/policy", getAttendancePolicies);
 // biometric
 attendanceRoutes.post("/upload", uploadBiometricData);
 attendanceRoutes.get("/", getAttendances);
+attendanceRoutes.get("/monthly", getUserMonthlyAttendance);
 
 export default attendanceRoutes;

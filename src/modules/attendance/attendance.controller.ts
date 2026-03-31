@@ -4,6 +4,7 @@ import { CalendarDay } from "./companyCalendar.model";
 import { Attendance } from "./attendance.model";
 import { User } from "../user/user.model";
 import type { JwtPayload } from "../auth/auth.type";
+import { Types } from "mongoose";
 
 
 
@@ -422,11 +423,75 @@ export const uploadBiometricData = async (c: Context) => {
 
 
 
+// export const getAttendances = async (c: Context) => {
+//   try {
+//     const data = await Attendance.find().populate("userId", "name email");
+//     return c.json({ data }, 200);
+//   } catch (error: any) {
+//     return c.json({ message: error.message }, 500);
+//   }
+// };
+
+
+
+// ===== GET ALL ATTENDANCES WITH FILTERS & PAGINATION =====
+
+
 export const getAttendances = async (c: Context) => {
   try {
-    const data = await Attendance.find().populate("userId", "name email");
-    return c.json({ data }, 200);
+    const { page = "1", limit = "10", status, userId, search } = c.req.query();
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+
+    // ===== BUILD FILTER =====
+    const filter: any = {};
+    if (status) filter.status = status;
+    if (userId) filter.userId = new Types.ObjectId(userId as string);
+    if (search) {
+      filter.$or = [
+        { "userId.name": { $regex: search as string, $options: "i" } },
+        { "userId.email": { $regex: search as string, $options: "i" } },
+      ];
+    }
+
+    // ===== QUERY ATTENDANCE =====
+    const data = await Attendance.find(filter)
+      .populate("userId", "name email")
+      .sort({ date: -1 }) // latest first
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum);
+
+    const total = await Attendance.countDocuments(filter);
+
+    return c.json({ data, total, page: pageNum, limit: limitNum }, 200);
   } catch (error: any) {
+    console.error(error);
+    return c.json({ message: error.message }, 500);
+  }
+};
+
+// ===== GET PARTICULAR USER MONTH-WISE ATTENDANCE =====
+export const getUserMonthlyAttendance = async (c: Context) => {
+  try {
+    const { userId, month, year } = c.req.query();
+
+    if (!userId || !month || !year) {
+      return c.json({ message: "userId, month and year are required" }, 400);
+    }
+
+    const startDate = new Date(Number(year), Number(month) - 1, 1);
+    const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59, 999);
+
+    const data = await Attendance.find({
+      userId: new Types.ObjectId(userId as string),
+      date: { $gte: startDate, $lte: endDate },
+    })
+      .populate("userId", "name email")
+      .sort({ date: 1 }); // sort by date ascending
+
+    return c.json({ data, month, year }, 200);
+  } catch (error: any) {
+    console.error(error);
     return c.json({ message: error.message }, 500);
   }
 };
