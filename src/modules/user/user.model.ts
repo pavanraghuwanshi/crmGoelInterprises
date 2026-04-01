@@ -16,6 +16,7 @@ export interface IUser extends Document {
   employeeObjId:Types.ObjectId,
   uniqueId:Number,
   attendancePolicyId?: Types.ObjectId;
+  payrollPolicyId?: Types.ObjectId;
 
 }
 
@@ -56,6 +57,11 @@ const userSchema = new Schema<IUser>({
     type: mongoose.Schema.Types.ObjectId,
     ref: "AttendancePolicy",
   },
+  payrollPolicyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "PayrollPolicy",
+  }
+}, { timestamps: true
 });
 
 export const User = mongoose.model<IUser>("User", userSchema);

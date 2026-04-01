@@ -21,8 +21,9 @@ interface RegisterBody {
   createdBy:Types.ObjectId;
   employeeObjId:Types.ObjectId;
   uniqueId:number;
+  attendancePolicyId: Types.ObjectId;
+  payrollPolicyId: Types.ObjectId;
 }
-
 
 // Login Types
 interface LoginBody {
@@ -83,6 +84,8 @@ export const register = async (c: Context) => {
       createdBy,
       employeeObjId,
       uniqueId,
+      attendancePolicyId,   // ✅ add
+      payrollPolicyId       // ✅ add
     } = body;
 
     if (!name || !email || !password) {
@@ -145,6 +148,8 @@ export const register = async (c: Context) => {
       createdBy: finalCreatedBy,
       employeeObjId: employeeRef,
       uniqueId: uniqueId,
+      attendancePolicyId,
+      payrollPolicyId
     });
 
     return c.json(
@@ -153,7 +158,9 @@ export const register = async (c: Context) => {
         email: user.email,
         role: user.role,
         createdBy: user.createdBy,
-        uniqueId:uniqueId
+        uniqueId:uniqueId,
+        attendancePolicyId,
+        payrollPolicyId
       },
       201
     );

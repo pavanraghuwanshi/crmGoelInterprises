@@ -15,6 +15,7 @@ const app = new Hono();
 const allowedOrigins = [
   "http://localhost:5173",
   "https://goyal-enterprices.vercel.app",
+  "http://34.180.48.62:5000"
 ];
 
 app.use("*", cors({
