@@ -205,6 +205,7 @@ export const getUsers = async (c: Context) => {
 
       return {
         id: u._id,
+        name :u.name,
         email: u.email,
         role: u.role,
         password: decryptedPassword,
