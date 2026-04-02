@@ -12,19 +12,24 @@ const app = new Hono();
 // ✅ Allow ALL CORS
 
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://goyal-enterprices.vercel.app",
-  "http://34.180.48.62:5000"
-];
-
 app.use("*", cors({
-  origin: (origin) => {
-    if (!origin) return origin; // allow Postman / server calls
-    return allowedOrigins.includes(origin) ? origin : "";
-  },
-  credentials: true,
+  origin: (origin) => "*", // always return "*" to allow all origins
+  credentials: true,       // allow cookies/auth headers
 }));
+
+// const allowedOrigins = [
+//   "http://localhost:5173",
+//   "https://goyal-enterprices.vercel.app",
+//   "http://34.180.48.62:5000"
+// ];
+
+// app.use("*", cors({
+//   origin: (origin) => {
+//     if (!origin) return origin; // allow Postman / server calls
+//     return allowedOrigins.includes(origin) ? origin : "";
+//   },
+//   credentials: true,
+// }));
 
 app.get("/", (c) => {
   return c.json({ message: "CRM API running 🚀" });
