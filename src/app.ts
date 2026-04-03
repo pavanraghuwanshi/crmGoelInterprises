@@ -6,6 +6,7 @@ import docCenterRoutes from "../src/modules/doccenter/doccenter.route";
 import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
 import companyCalendarRouter from "./modules/attendance/companyCalendar.route";
+import employeeSalaryRoutes from "./modules/employeeSalary/employeeSalary.route";
 
 const app = new Hono();
 
@@ -50,6 +51,11 @@ app.route("/api/user", userRoutes);
 // 📆 attendance routes
 app.route("/api/attendance", attendanceRoutes);
 app.route("/api/company-calendar", companyCalendarRouter);
+
+
+//  employee salary routes
+app.route("/api/employee-salary", employeeSalaryRoutes);
+
 
 // 💰 payroll routes
 app.route("/api/payroll", payrollRoutes);

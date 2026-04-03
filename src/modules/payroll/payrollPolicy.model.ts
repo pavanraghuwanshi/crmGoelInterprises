@@ -12,6 +12,7 @@ export interface IPayrollPolicy extends Document {
     conveyance: number;
     lwfEmployee: number;
     lwfEmployer: number;
+    overtimeHourlyRate: number;
   };
   sundayPolicyActive: boolean; // Alternating 5-6 day week rule
   createdBy: Types.ObjectId;
@@ -28,7 +29,8 @@ const payrollPolicySchema = new Schema<IPayrollPolicy>({
     hra: { type: Number, default: 0 },
     conveyance: { type: Number, default: 0 },
     lwfEmployee: { type: Number, default: 0 },
-    lwfEmployer: { type: Number, default: 0 }
+    lwfEmployer: { type: Number, default: 0 },
+    overtimeHourlyRate: { type: Number, default: 0 }
   },
   sundayPolicyActive: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
