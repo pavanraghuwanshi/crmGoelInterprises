@@ -5,7 +5,9 @@ import {
   getAttendancePolicies,
   uploadBiometricData,
   getAttendances,
-  getUserMonthlyAttendance
+  getUserMonthlyAttendance,
+  updateAttendancePolicy,
+  deleteAttendancePolicy
 } from "./attendance.controller";
 
 const attendanceRoutes = new Hono();
@@ -15,6 +17,8 @@ attendanceRoutes.use("*", verifyToken);
 // policies
 attendanceRoutes.post("/policy", createAttendancePolicy);
 attendanceRoutes.get("/policy", getAttendancePolicies);
+attendanceRoutes.put("/policy/:id", updateAttendancePolicy);
+attendanceRoutes.delete("/policy/:id", deleteAttendancePolicy);
 
 
 // biometric

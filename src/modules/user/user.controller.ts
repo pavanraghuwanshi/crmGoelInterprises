@@ -185,7 +185,7 @@ export const getUsers = async (c: Context) => {
 
     // 👉 Get users
     const users = await User.find(filter)
-      .select("email role password uniqueId")
+      .select("email role password uniqueId name")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });

@@ -34,6 +34,55 @@ export const getAttendancePolicies = async (c: Context) => {
 
 
 
+export const updateAttendancePolicy = async (c: Context) => {
+  try {
+    const id = c.req.param("id"); // from route /:id
+    const body = await c.req.json();
+
+    const updatedPolicy = await AttendancePolicy.findByIdAndUpdate(
+      id,
+      { $set: body },
+      { new: true }
+    );
+
+    if (!updatedPolicy) {
+      return c.json({ message: "Attendance policy not found" }, 404);
+    }
+
+    return c.json(
+      { message: "Attendance policy updated successfully", policy: updatedPolicy },
+      200
+    );
+  } catch (error: any) {
+    return c.json({ message: error.message }, 500);
+  }
+};
+
+
+export const deleteAttendancePolicy = async (c: Context) => {
+  try {
+    const id = c.req.param("id"); // from route /:id
+
+    const deletedPolicy = await AttendancePolicy.findByIdAndDelete(id);
+
+    if (!deletedPolicy) {
+      return c.json({ message: "Attendance policy not found" }, 404);
+    }
+
+    return c.json(
+      { message: "Attendance policy deleted successfully" },
+      200
+    );
+  } catch (error: any) {
+    return c.json({ message: error.message }, 500);
+  }
+};
+
+
+
+
+
+
 
 
 // --- Attendance Biometric File Upload Processing ---
