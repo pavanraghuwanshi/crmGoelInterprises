@@ -1,12 +1,9 @@
 import type { Context } from "hono";
 import { User } from "../../modules/user/user.model.ts";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "../auth/auth.type.ts";
 import { setCookie } from "hono/cookie";
 import { decryptPassword, encryptPassword } from "../../utils/crypto.ts";
-import { verifyToken } from "../../middleware/auth.middleware.ts";
-import mongoose from "mongoose";
 import { Types } from "mongoose";
 import { EmployeeId } from "./employeeId.model.ts";
 
