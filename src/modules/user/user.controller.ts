@@ -73,9 +73,108 @@ const checkDuplicateUser = async (
 
 // ✅ Register
 
+// export const register = async (c: Context) => {
+//   try {
+//     const body = await c.req.json<RegisterBody>();
+//     const {
+//       name,
+//       email,
+//       password,
+//       role,
+//       createdBy,
+//       employeeObjId,
+//       uniqueId,
+//       attendancePolicyId,   // ✅ add
+//       payrollPolicyId       // ✅ add
+//     } = body;
+
+//     if (!name || !email || !password) {
+//       return c.json({ message: "All fields are required" }, 400);
+//     }
+
+//     // ✅ GET USER FROM CONTEXT (FIX)
+//     const loggedInUser = c.get("user");
+
+
+//     if (!loggedInUser) {
+//       return c.json({ message: "Unauthorized" }, 401);
+//     }
+
+//     // ✅ safe role
+//     const safeRole =
+//       role && ["admin", "hr", "user"].includes(role) ? role : "user";
+
+//     // 👉 check existing user
+//       const duplicate = await checkDuplicateUser(body.email, body.uniqueId);
+
+//       if (duplicate === "email") {
+//         return c.json({ message: "Email already exists" }, 400);
+//       }
+//       if (duplicate === "uniqueId") {
+//         return c.json({ message: "Unique ID already exists" }, 400);
+//       }
+
+//     // 👉 encrypt password
+//     const encryptedPassword = await encryptPassword(password);
+
+//     // 🔥 ROLE BASED createdBy LOGIC
+//     let finalCreatedBy;
+
+//     if (loggedInUser.role === "admin" && createdBy) {
+//       finalCreatedBy = createdBy;
+//     } else {
+//       finalCreatedBy = loggedInUser.id;
+//     }
+
+//     // 🔥 VALIDATE EMPLOYEE
+//     let employeeRef: any = undefined;
+
+//     if (employeeObjId) {
+//       const employee = await EmployeeId.findById(employeeObjId);
+
+//       if (!employee) {
+//         return c.json({ message: "Invalid employee ID" }, 400);
+//       }
+
+//       employeeRef = employee._id;
+//     }
+
+//     // 👉 create user
+//     const user = await User.create({
+//       name,
+//       email,
+//       password: encryptedPassword,
+//       role: safeRole,
+//       createdBy: finalCreatedBy,
+//       employeeObjId: employeeRef,
+//       uniqueId: uniqueId,
+//       attendancePolicyId,
+//       payrollPolicyId
+//     });
+
+//     return c.json(
+//       {
+//         id: user._id,
+//         email: user.email,
+//         role: user.role,
+//         createdBy: user.createdBy,
+//         uniqueId:uniqueId,
+//         attendancePolicyId,
+//         payrollPolicyId
+//       },
+//       201
+//     );
+//   } catch (error) {
+//     console.error("Register Error:", error);
+//     return c.json({ message: "Internal Server Error" }, 500);
+//   }
+// };
+
+
 export const register = async (c: Context) => {
   try {
-    const body = await c.req.json<RegisterBody>();
+    const body = await c.req.json();
+
     const {
       name,
       email,
@@ -84,17 +183,46 @@ export const register = async (c: Context) => {
       createdBy,
       employeeObjId,
       uniqueId,
-      attendancePolicyId,   // ✅ add
-      payrollPolicyId       // ✅ add
+      attendancePolicyId,
+      payrollPolicyId,
+
+      // 🔥 NEW FIELDS
+      otherName,
+      category,
+      gender,
+      fatherName,
+      motherName,
+      maritalStatus,
+      spouseName,
+      familyDetails,
+      dob,
+      bloodGroup,
+      emergencyContact,
+      reference,
+      academicQualification,
+      previousWorkExperience,
+      interviewDate,
+      competencyMet,
+      designation,
+      workingHours,
+      aadharNo,
+      pfNo,
+      esiNo,
+      doj,
+      doe,
+      permanentAddress,
+      currentAddress,
+      mobileNo
+
     } = body;
 
+    // ✅ validation
     if (!name || !email || !password) {
       return c.json({ message: "All fields are required" }, 400);
     }
 
-    // ✅ GET USER FROM CONTEXT (FIX)
+    // ✅ logged in user
     const loggedInUser = c.get("user");
-
 
     if (!loggedInUser) {
       return c.json({ message: "Unauthorized" }, 401);
@@ -104,20 +232,21 @@ export const register = async (c: Context) => {
     const safeRole =
       role && ["admin", "hr", "user"].includes(role) ? role : "user";
 
-    // 👉 check existing user
-      const duplicate = await checkDuplicateUser(body.email, body.uniqueId);
+    // ✅ duplicate check
+    const duplicate = await checkDuplicateUser(email, uniqueId);
 
-      if (duplicate === "email") {
-        return c.json({ message: "Email already exists" }, 400);
-      }
-      if (duplicate === "uniqueId") {
-        return c.json({ message: "Unique ID already exists" }, 400);
-      }
+    if (duplicate === "email") {
+      return c.json({ message: "Email already exists" }, 400);
+    }
 
-    // 👉 encrypt password
+    if (duplicate === "uniqueId") {
+      return c.json({ message: "Unique ID already exists" }, 400);
+    }
+
+    // ✅ encrypt password
     const encryptedPassword = await encryptPassword(password);
 
-    // 🔥 ROLE BASED createdBy LOGIC
+    // 🔥 ROLE BASED createdBy LOGIC (UNCHANGED)
     let finalCreatedBy;
 
     if (loggedInUser.role === "admin" && createdBy) {
@@ -126,7 +255,7 @@ export const register = async (c: Context) => {
       finalCreatedBy = loggedInUser.id;
     }
 
-    // 🔥 VALIDATE EMPLOYEE
+    // 🔥 VALIDATE EMPLOYEE (UNCHANGED)
     let employeeRef: any = undefined;
 
     if (employeeObjId) {
@@ -139,7 +268,7 @@ export const register = async (c: Context) => {
       employeeRef = employee._id;
     }
 
-    // 👉 create user
+    // ✅ CREATE USER (ONLY FIELDS ADDED BELOW)
     const user = await User.create({
       name,
       email,
@@ -147,9 +276,38 @@ export const register = async (c: Context) => {
       role: safeRole,
       createdBy: finalCreatedBy,
       employeeObjId: employeeRef,
-      uniqueId: uniqueId,
+      uniqueId,
+
       attendancePolicyId,
-      payrollPolicyId
+      payrollPolicyId,
+
+      // 🔥 NEW FIELDS SAVE
+      otherName,
+      category,
+      gender,
+      fatherName,
+      motherName,
+      maritalStatus,
+      spouseName,
+      familyDetails,
+      dob,
+      bloodGroup,
+      emergencyContact,
+      reference,
+      academicQualification,
+      previousWorkExperience,
+      interviewDate,
+      competencyMet,
+      designation,
+      workingHours,
+      aadharNo,
+      pfNo,
+      esiNo,
+      doj,
+      doe,
+      permanentAddress,
+      currentAddress,
+      mobileNo
     });
 
     return c.json(
@@ -158,7 +316,7 @@ export const register = async (c: Context) => {
         email: user.email,
         role: user.role,
         createdBy: user.createdBy,
-        uniqueId:uniqueId,
+        uniqueId: user.uniqueId,
         attendancePolicyId,
         payrollPolicyId
       },
@@ -169,6 +327,8 @@ export const register = async (c: Context) => {
     return c.json({ message: "Internal Server Error" }, 500);
   }
 };
+
+
 
 
 // ---------------- GET ALL USERS ----------------
@@ -250,6 +410,113 @@ export const getUserById = async (c: Context) => {
 };
 
 // ---------------- UPDATE USER ----------------
+// export const updateUser = async (c: Context) => {
+//   try {
+//     const id = c.req.param("id");
+//     const body = await c.req.json<Record<string, any>>();
+
+//     // 👉 Check user exist
+//     const user = await User.findById(id);
+//     if (!user) {
+//       return c.json({ message: "User not found" }, 404);
+//     }
+
+//     // 👉 Get schema fields dynamically
+//     const allowedFields = Object.keys(User.schema.paths);
+
+//     // ❌ restricted fields
+//     const restrictedFields = ["_id", "__v", "createdAt", "updatedAt"];
+
+//     const updatableFields = allowedFields.filter(
+//       (field) => !restrictedFields.includes(field)
+//     );
+
+//     // ---------------- VALIDATIONS ----------------
+
+//     // 👉 Email validation
+//     if (body.email !== undefined) {
+//       const emailRegex = /^\S+@\S+\.\S+$/;
+
+//       if (typeof body.email !== "string" || !emailRegex.test(body.email)) {
+//         return c.json({ message: "Invalid email format" }, 400);
+//       }
+
+//       const duplicate = await checkDuplicateUser(body.email, body.uniqueId, id);
+
+//       if (duplicate === "email") {
+//         return c.json({ message: "Email already exists" }, 400);
+//       }
+//       if (duplicate === "uniqueId") {
+//         return c.json({ message: "Unique ID already exists" }, 400);
+//       }
+
+//     // 👉 Role validation
+//     if (body.role !== undefined) {
+//       if (!["admin", "hr", "user"].includes(body.role)) {
+//         return c.json({ message: "Invalid role" }, 400);
+//       }
+//     }
+
+//     // ---------------- PASSWORD FIX 🔥 ----------------
+
+//     if (body.password !== undefined) {
+//       if (typeof body.password !== "string" || body.password.length < 6) {
+//         return c.json(
+//           { message: "Password must be at least 6 characters" },
+//           400
+//         );
+//       }
+
+//       const encrypted = encryptPassword(body.password);
+
+//       user.password = encrypted;
+
+//       // 🔥 IMPORTANT (force mongoose to detect change)
+//       user.markModified("password");
+
+//       // ❌ remove so it doesn't override again
+//       delete body.password;
+//     }
+
+//     // ---------------- DYNAMIC UPDATE ----------------
+
+//     Object.keys(body).forEach((key) => {
+//       if (updatableFields.includes(key)) {
+//         user.set(key, body[key]);
+//       }
+//     });
+
+//     await user.save();
+
+//     // ---------------- RESPONSE ----------------
+
+//     let decryptedPassword: string | null = null;
+
+//     try {
+//       if (user.password) {
+//         decryptedPassword = decryptPassword(user.password);
+//       }
+//     } catch (err) {
+//       console.error("Decrypt failed");
+//     }
+
+//     return c.json(
+//       {
+//         message: "User updated successfully",
+//         user: {
+//           ...user.toObject(),
+//           password: decryptedPassword, // 👈 for testing only
+//         },
+//       },
+//       200
+//     );
+//   }
+//  }catch (error) {
+//     console.error("Update Error:", error);
+//     return c.json({ message: "Internal Server Error" }, 500);
+//   }
+// };
+
 export const updateUser = async (c: Context) => {
   try {
     const id = c.req.param("id");
@@ -261,7 +528,7 @@ export const updateUser = async (c: Context) => {
       return c.json({ message: "User not found" }, 404);
     }
 
-    // 👉 Get schema fields dynamically
+    // 👉 Get schema fields dynamically (ALL fields incl new ones)
     const allowedFields = Object.keys(User.schema.paths);
 
     // ❌ restricted fields
@@ -281,19 +548,38 @@ export const updateUser = async (c: Context) => {
         return c.json({ message: "Invalid email format" }, 400);
       }
 
-      const duplicate = await checkDuplicateUser(body.email, body.uniqueId, id);
+      const duplicate = await checkDuplicateUser(
+        body.email,
+        body.uniqueId ?? user.uniqueId,
+        id
+      );
 
       if (duplicate === "email") {
         return c.json({ message: "Email already exists" }, 400);
       }
+
       if (duplicate === "uniqueId") {
         return c.json({ message: "Unique ID already exists" }, 400);
       }
+    }
 
     // 👉 Role validation
     if (body.role !== undefined) {
       if (!["admin", "hr", "user"].includes(body.role)) {
         return c.json({ message: "Invalid role" }, 400);
+      }
+    }
+
+    // 👉 UniqueId validation (IMPORTANT 🔥)
+    if (body.uniqueId !== undefined) {
+      const duplicate = await checkDuplicateUser(
+        body.email ?? user.email,
+        body.uniqueId,
+        id
+      );
+
+      if (duplicate === "uniqueId") {
+        return c.json({ message: "Unique ID already exists" }, 400);
       }
     }
 
@@ -307,14 +593,13 @@ export const updateUser = async (c: Context) => {
         );
       }
 
-      const encrypted = encryptPassword(body.password);
+      const encrypted = await encryptPassword(body.password);
 
       user.password = encrypted;
 
-      // 🔥 IMPORTANT (force mongoose to detect change)
+      // 🔥 force mongoose detect change
       user.markModified("password");
 
-      // ❌ remove so it doesn't override again
       delete body.password;
     }
 
@@ -345,17 +630,18 @@ export const updateUser = async (c: Context) => {
         message: "User updated successfully",
         user: {
           ...user.toObject(),
-          password: decryptedPassword, // 👈 for testing only
+          password: decryptedPassword // ⚠️ only for testing
         },
       },
       200
     );
-  }
- }catch (error) {
+  } catch (error) {
     console.error("Update Error:", error);
     return c.json({ message: "Internal Server Error" }, 500);
   }
 };
+
+
 
 // ---------------- DELETE USER ----------------
 export const deleteUser = async (c: Context) => {
