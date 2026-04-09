@@ -334,11 +334,20 @@ export const getUsers = async (c: Context) => {
     // 👉 Query params
     const page = parseInt(c.req.query("page") || "1");
     const limit = parseInt(c.req.query("limit") || "10");
+    const search = c.req.query("search") || "";
 
     const skip = (page - 1) * limit;
 
     // 👉 Filter (exclude admin)
-    const filter = { role: { $ne: "admin" } };
+    let filter: any = { role: { $ne: "admin" } };
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { uniqueId: { $regex: search, $options: "i" } }, // ⚠️ see note below
+      ];
+    }
 
     // 👉 Get users
     const users = await User.find(filter)

@@ -2,6 +2,8 @@ import type { Context } from "hono";
 import { Types } from "mongoose";
 import { User } from "../user/user.model";
 
+
+// post roster
 export const assignAttendancePolicyBulk = async (c: Context) => {
   try {
     const body = await c.req.json();
@@ -52,6 +54,73 @@ export const assignAttendancePolicyBulk = async (c: Context) => {
     );
   } catch (error) {
     console.error("Bulk Attendance Update Error:", error);
+    return c.json({ message: "Internal Server Error" }, 500);
+  }
+};
+
+
+
+//  get roster
+export const getRosterUsers = async (c: Context) => {
+  try {
+    const query = c.req.query();
+
+    // ✅ query params
+    const page = parseInt(query.page || "1");
+    const limit = parseInt(query.limit || "10");
+    const search = query.search || "";
+    const attendancePolicyId = query.attendancePolicyId;
+
+    const skip = (page - 1) * limit;
+
+    // ✅ logged in user
+    const loggedInUser = c.get("user");
+
+    if (!loggedInUser) {
+      return c.json({ message: "Unauthorized" }, 401);
+    }
+
+    // ✅ base filter
+    let filter: any = {};
+
+    // 🔍 search (name, email, mobile)
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { mobileNo: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    // 🎯 filter by attendancePolicyId
+    if (attendancePolicyId) {
+      filter.attendancePolicyId = attendancePolicyId;
+    }
+
+    // ✅ fetch users
+    const users = await User.find(filter)
+      .select("-password") // hide password
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    // ✅ total count
+    const total = await User.countDocuments(filter);
+
+    return c.json(
+      {
+        data: users,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      },
+      200
+    );
+  } catch (error) {
+    console.error("Get Roster Users Error:", error);
     return c.json({ message: "Internal Server Error" }, 500);
   }
 };
