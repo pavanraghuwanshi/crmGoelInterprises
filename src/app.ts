@@ -7,6 +7,7 @@ import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
 import companyCalendarRouter from "./modules/attendance/companyCalendar.route";
 import employeeSalaryRoutes from "./modules/employeeSalary/employeeSalary.route";
+import rosterRoute from "./modules/Roaster/roster.route";
 
 const app = new Hono();
 
@@ -62,5 +63,9 @@ app.route("/api/payroll", payrollRoutes);
 
 // 📁 doccenter routes
 app.route("/api/doccenter", docCenterRoutes);
+
+//  Roster routes
+app.route("/api/roster", rosterRoute);
+
 
 export default app;
