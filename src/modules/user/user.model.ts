@@ -142,6 +142,7 @@ export interface IUser extends Document {
   currentAddress?: string;
 
   mobileNo?: string;
+  companyId?: Types.ObjectId;
 }
 
 // 📦 Schema
@@ -254,7 +255,11 @@ const userSchema = new Schema<IUser>(
     permanentAddress: String,
     currentAddress: String,
 
-    mobileNo: String
+    mobileNo: String,
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Employee",
+    },
 
     // 🔥 NEW FIELDS END
   },
