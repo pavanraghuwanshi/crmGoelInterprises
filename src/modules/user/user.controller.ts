@@ -309,6 +309,7 @@ export const getUsers = async (c: Context) => {
     const limit = parseInt(c.req.query("limit") || "10");
     const search = c.req.query("search") || "";
     const companyId = c.req.query("companyId");
+    const gender = c.req.query("gender");
 
     const skip = (page - 1) * limit;
 
@@ -320,6 +321,10 @@ export const getUsers = async (c: Context) => {
     // ✅ company filter
     if (companyId && mongoose.Types.ObjectId.isValid(companyId)) {
       filter.companyId = new mongoose.Types.ObjectId(companyId);
+    }
+
+    if (gender) {
+      filter.gender = gender.toLowerCase();
     }
 
     // ✅ search filter
