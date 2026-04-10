@@ -91,9 +91,15 @@ export const updateCompany = async (c: Context) => {
     const id = c.req.param("id");
     const body = await c.req.json();
 
-    const company = await Company.findByIdAndUpdate(id, body, {
-      new: true,
-    }).lean();
+        const company = await Company.findOneAndUpdate(
+        { _id: id },
+        body,
+        { new: true }
+        ).lean();
+
+        if (!company) {
+        return c.json({ message: "Company not found" }, 404);
+        }
 
     if (!company) {
       return c.json({ message: "Company not found" }, 404);
