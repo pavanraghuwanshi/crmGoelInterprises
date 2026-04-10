@@ -9,6 +9,8 @@ import companyCalendarRouter from "./modules/attendance/companyCalendar.route";
 import employeeSalaryRoutes from "./modules/employeeSalary/employeeSalary.route";
 import rosterRoute from "./modules/Roaster/roster.route";
 import companyRoute from "./modules/company/company.route";
+import assetRoutes from "./modules/assets/asset.route";
+
 
 const app = new Hono();
 
@@ -69,6 +71,9 @@ app.route("/api/doccenter", docCenterRoutes);
 app.route("/api/roster", rosterRoute);
 
 app.route("/api/company", companyRoute);
+//  Asset routes
+app.route("/api/assets", assetRoutes);
+
 
 
 export default app;
