@@ -10,6 +10,7 @@ import employeeSalaryRoutes from "./modules/employeeSalary/employeeSalary.route"
 import rosterRoute from "./modules/Roaster/roster.route";
 import companyRoute from "./modules/company/company.route";
 import assetRoutes from "./modules/assets/asset.route";
+import leaveRoutes from "./modules/leaveManagement/leave.route";
 
 
 const app = new Hono();
@@ -18,23 +19,11 @@ const app = new Hono();
 
 
 app.use("*", cors({
-  origin: (origin) => "*", // always return "*" to allow all origins
-  credentials: true,       // allow cookies/auth headers
+  origin: (origin) => "*",
+  credentials: true,
 }));
 
-// const allowedOrigins = [
-//   "http://localhost:5173",
-//   "https://goyal-enterprices.vercel.app",
-//   "http://34.180.48.62:5000"
-// ];
 
-// app.use("*", cors({
-//   origin: (origin) => {
-//     if (!origin) return origin; // allow Postman / server calls
-//     return allowedOrigins.includes(origin) ? origin : "";
-//   },
-//   credentials: true,
-// }));
 
 app.get("/", (c) => {
   return c.json({ message: "CRM API running 🚀" });
@@ -73,6 +62,9 @@ app.route("/api/roster", rosterRoute);
 app.route("/api/company", companyRoute);
 //  Asset routes
 app.route("/api/assets", assetRoutes);
+
+// leave routes
+app.route("/api/leave", leaveRoutes);
 
 
 
