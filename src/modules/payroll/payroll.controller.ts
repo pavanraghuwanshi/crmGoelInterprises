@@ -247,26 +247,3 @@ export const deletePayrollPolicy = async (c: Context) => {
 };
 
 
-
-export const calculatePayroll = async (c: Context) => {
-  // A stub algorithm to demonstrate calculating Payroll based on Payroll Policy and Attendance records
-  // "do according to leave deduction policy pdf" (5-6 days overlapping sunday rule)
-  try {
-    const month = c.req.query("month"); // e.g. "2025-01"
-    const userId = c.req.query("userId");
-    
-    // In actual implementation, we'd pull the Attendance for this month for the User,
-    // evaluate consecutive "5 Days" weeks vs "6 Days" weeks to see if Sundays are paid or deducted.
-    
-    return c.json({
-      message: "Payroll calculated based on Payroll Policy and Leave Deduction Sunday Rule",
-      payroll: {
-        basic: 10000,
-        deductions: 500, // Due to unpaid Sundays
-        netPay: 9500
-      }
-    }, 200);
-  } catch (error: any) {
-    return c.json({ message: error.message }, 500);
-  }
-};
