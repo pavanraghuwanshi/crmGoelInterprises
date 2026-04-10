@@ -7,7 +7,8 @@ import {
   getAttendances,
   getUserMonthlyAttendance,
   updateAttendancePolicy,
-  deleteAttendancePolicy
+  deleteAttendancePolicy,
+  updateAttendanceStatus
 } from "./attendance.controller";
 
 const attendanceRoutes = new Hono();
@@ -21,9 +22,16 @@ attendanceRoutes.put("/policy/:id", updateAttendancePolicy);
 attendanceRoutes.delete("/policy/:id", deleteAttendancePolicy);
 
 
-// biometric
+// biometric  upload
 attendanceRoutes.post("/upload", uploadBiometricData);
+
+// get Attendance
 attendanceRoutes.get("/", getAttendances);
+
+// update attendance
+attendanceRoutes.put("/update", updateAttendanceStatus);
+
+// get monthly attendance
 attendanceRoutes.get("/monthly", getUserMonthlyAttendance);
 
 export default attendanceRoutes;
