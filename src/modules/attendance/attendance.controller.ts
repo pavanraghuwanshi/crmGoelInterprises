@@ -343,10 +343,231 @@ export const updateAttendanceStatus = async (c: Context) => {
 
 
 
+//    Get User List For mark Manual Attendance
+
+export const getManualAttendancePendingUsers = async (c: Context) => {
+  try {
+    const {
+      date,
+      page = "1",
+      limit = "10",
+      search = "",
+    } = c.req.query();
+
+    if (!date) {
+      return c.json({ message: "date query param required" }, 400);
+    }
+
+    const pageNum = Math.max(parseInt(page as string, 10), 1);
+    const limitNum = Math.max(parseInt(limit as string, 10), 1);
+    const skip = (pageNum - 1) * limitNum;
+
+    const selectedDate = new Date(date as string);
+
+    // ===== USER FILTER =====
+    const userFilter: any = {};
+
+    if (search) {
+      userFilter.$or = [
+        { name: { $regex: search as string, $options: "i" } },
+        { email: { $regex: search as string, $options: "i" } },
+        { employeeId: { $regex: search as string, $options: "i" } },
+        { uniqueId: Number(search) || -1 }, // for numeric search
+      ];
+    }
+
+    // ===== GET USERS =====
+    const users = await User.find(userFilter)
+      .select("name email employeeId uniqueId")
+      .sort({ name: 1 });
+
+    if (users.length === 0) {
+      return c.json({
+        success: true,
+        date,
+        total: 0,
+        page: pageNum,
+        limit: limitNum,
+        data: [],
+      });
+    }
+
+    // ===== GET ATTENDANCE =====
+    const userIds = users.map((u: any) => u._id);
+
+    const attendances = await Attendance.find({
+      userId: { $in: userIds },
+      date: selectedDate,
+    });
+
+    const attendanceMap = new Map();
+
+    attendances.forEach((att: any) => {
+      attendanceMap.set(String(att.userId), att);
+    });
+
+    // ===== BUILD RESULT =====
+    const pendingUsers = users
+      .map((user: any) => {
+        const record = attendanceMap.get(String(user._id));
+
+        // No attendance record
+        if (!record) {
+          return {
+            userId: user._id,
+            name: user.name,
+            email: user.email,
+            employeeId: user.employeeId,
+            uniqueId: user.uniqueId,
+            issue: "No Punch In / No Punch Out",
+            status: "Absent",
+          };
+        }
+
+        let issue = "";
+
+        if (!record.punchIn && !record.punchOut) {
+          issue = "No Punch In / No Punch Out";
+        } else if (!record.punchIn) {
+          issue = "Missing Punch In";
+        } else if (!record.punchOut) {
+          issue = "Missing Punch Out";
+        }
+
+        if (issue) {
+          return {
+            userId: user._id,
+            name: user.name,
+            email: user.email,
+            employeeId: user.employeeId,
+            uniqueId: user.uniqueId,
+            issue,
+            status: record.status,
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    // ===== PAGINATION =====
+    const total = pendingUsers.length;
+    const paginatedData = pendingUsers.slice(skip, skip + limitNum);
+
+    return c.json({
+      success: true,
+      date,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+      data: paginatedData,
+    });
+
+  } catch (error: any) {
+    console.error(error);
+    return c.json({ message: error.message }, 500);
+  }
+};
 
 
 
+//    Mark Attendance For Any Date 
 
+export const manualMarkAttendance = async (c: Context) => {
+  try {
+    const body = await c.req.json();
+
+    const { userId, date, status, punchIn, punchOut } = body;
+
+    if (!userId || !date || !status) {
+      return c.json(
+        { message: "userId, date, status required" },
+        400
+      );
+    }
+
+    // ===== CHECK USER EXISTS =====
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return c.json(
+        { message: "User not found" },
+        404
+      );
+    }
+
+    // ===== VALID STATUS =====
+    const allowedStatuses = [
+      "Present",
+      "Absent",
+      "Half-Day",
+      "WeeklyOff",
+      "Holiday"
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return c.json(
+        { message: "Invalid status" },
+        400
+      );
+    }
+
+    let totalWorkedMinutes = 0;
+
+    if (punchIn && punchOut) {
+      totalWorkedMinutes =
+        (new Date(punchOut).getTime() - new Date(punchIn).getTime()) / 60000;
+    }
+
+    // ===== FIND EXISTING =====
+    const existingAttendance = await Attendance.findOne({
+      userId,
+      date: new Date(date),
+    });
+
+    let attendance;
+
+    if (existingAttendance) {
+      // UPDATE ONLY
+      existingAttendance.status = status;
+      existingAttendance.punchIn = punchIn ? new Date(punchIn) : null;
+      existingAttendance.punchOut = punchOut ? new Date(punchOut) : null;
+      existingAttendance.totalWorkedMinutes = totalWorkedMinutes;
+      existingAttendance.overtimeHours = 0;
+      existingAttendance.overtimePay = 0;
+      existingAttendance.isManual = true;
+
+      attendance = await existingAttendance.save();
+    } else {
+      // CREATE NEW
+      attendance = await Attendance.create({
+        userId,
+        uniqueId: Number(user.uniqueId),
+        date: new Date(date),
+        status,
+        punchIn: punchIn ? new Date(punchIn) : null,
+        punchOut: punchOut ? new Date(punchOut) : null,
+        totalWorkedMinutes,
+        overtimeHours: 0,
+        overtimePay: 0,
+        isManual: true,
+      });
+    }
+
+    return c.json({
+      success: true,
+      message: existingAttendance
+        ? "Attendance updated successfully"
+        : "Attendance created successfully",
+      data: attendance,
+    });
+
+  } catch (error: any) {
+    console.error(error);
+    return c.json({ message: error.message }, 500);
+  }
+};
 
 
 

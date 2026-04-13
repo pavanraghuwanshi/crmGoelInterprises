@@ -8,7 +8,9 @@ import {
   getUserMonthlyAttendance,
   updateAttendancePolicy,
   deleteAttendancePolicy,
-  updateAttendanceStatus
+  updateAttendanceStatus,
+  getManualAttendancePendingUsers,
+  manualMarkAttendance
 } from "./attendance.controller";
 
 const attendanceRoutes = new Hono();
@@ -28,8 +30,16 @@ attendanceRoutes.post("/upload", uploadBiometricData);
 // get Attendance
 attendanceRoutes.get("/", getAttendances);
 
-// update attendance
+
+// get User For Manual Attendance 
+attendanceRoutes.get("/get-user-to-mark-manual-attendance", getManualAttendancePendingUsers);
+
+// update attendance Status
 attendanceRoutes.put("/update", updateAttendanceStatus);
+
+// update attendance manually
+attendanceRoutes.put("/mark-manual-attendance", manualMarkAttendance);
+
 
 // get monthly attendance
 attendanceRoutes.get("/monthly", getUserMonthlyAttendance);

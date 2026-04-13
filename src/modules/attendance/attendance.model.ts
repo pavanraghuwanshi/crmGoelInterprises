@@ -10,6 +10,7 @@ export interface IAttendance extends Document {
   overtimeHours: number; // calculated over time
   overtimePay: number; // calculated overtime pay
   totalWorkedMinutes: number;
+  isManual:Boolean
 }
 
 const attendanceSchema = new Schema<IAttendance>({
@@ -21,7 +22,8 @@ const attendanceSchema = new Schema<IAttendance>({
   status: { type: String, enum: ["Present", "Absent", "Half-Day", "WeeklyOff", "Holiday"], default: "Absent" },
   overtimeHours: { type: Number, default: 0 },
   overtimePay: { type: Number, default: 0 },
-  totalWorkedMinutes: { type: Number, default: 0 }
+  totalWorkedMinutes: { type: Number, default: 0 },
+  isManual:{type:Boolean,default:false}
 }, { timestamps: true });
 
 // Ensure unique attendance entry per user per day
