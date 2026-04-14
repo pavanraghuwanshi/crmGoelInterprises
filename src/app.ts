@@ -11,6 +11,7 @@ import rosterRoute from "./modules/Roaster/roster.route";
 import companyRoute from "./modules/company/company.route";
 import assetRoutes from "./modules/assets/asset.route";
 import leaveRoutes from "./modules/leaveManagement/leave.route";
+import recruitmentRoutes from "./modules/recruitment/recruitment.route";
 
 
 const app = new Hono();
@@ -65,6 +66,9 @@ app.route("/api/assets", assetRoutes);
 
 // leave routes
 app.route("/api/leave", leaveRoutes);
+
+// 🤝 recruitment routes
+app.route("/api/recruitment", recruitmentRoutes);
 
 
 
