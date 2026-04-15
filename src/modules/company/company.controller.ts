@@ -1,6 +1,6 @@
 // controllers/company.controller.ts
 import type { Context } from "hono";
-import Company from "./company.model";
+import Company from "./company.model.ts";
 
 
 //  create company controller

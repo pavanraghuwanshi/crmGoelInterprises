@@ -12,6 +12,7 @@ import companyRoute from "./modules/company/company.route";
 import assetRoutes from "./modules/assets/asset.route";
 import leaveRoutes from "./modules/leaveManagement/leave.route";
 import recruitmentRoutes from "./modules/recruitment/recruitment.route";
+import empIdRoutes from "./modules/user/employeeId.route";
 
 
 const app = new Hono();
@@ -41,6 +42,11 @@ app.use(
 
 // 👤 user routes
 app.route("/api/user", userRoutes);
+
+
+
+// 👤 EMP ID routes
+app.route("/api/employee-id", empIdRoutes);
 
 // 📆 attendance routes
 app.route("/api/attendance", attendanceRoutes);
