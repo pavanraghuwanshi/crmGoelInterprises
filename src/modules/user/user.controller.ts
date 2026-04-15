@@ -570,6 +570,8 @@ export const getUsersDropdown = async (c: Context) => {
     const search = c.req.query("search") || "";
     const companyId = c.req.query("companyId");
     const limit = parseInt(c.req.query("limit") || "20");
+    const page = parseInt(c.req.query("page") || "1");
+    const skip = (page - 1) * limit;
 
     // ✅ base filter
     const filter: any = {
@@ -595,13 +597,21 @@ export const getUsersDropdown = async (c: Context) => {
     const users = await User.find(filter)
       .select("_id name")
       .sort({ name: 1 })
+      .skip(skip)
       .limit(limit)
       .lean();
+  const totalUsers = await User.countDocuments(filter);
 
     return c.json(
       {
         success: true,
         data: users,
+        pagination: {
+          total: totalUsers,
+          page,
+          limit,
+          totalPages: Math.ceil(totalUsers / limit),
+        },
       },
       200
     );
