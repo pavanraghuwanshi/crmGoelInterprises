@@ -26,8 +26,10 @@ export const applyLeave = async (c: Context) => {
     }
 
     // ✅ STEP 2: Find User using employeeId._id
-    const user = await User.findOne({employeeId:employee._id}).lean();
-
+    const user = await User.findOne({
+      employeeObjId: employee._id
+    }).lean();
+    
     if (!user) {
       return c.json({ message: "User not found" }, 404);
     }
