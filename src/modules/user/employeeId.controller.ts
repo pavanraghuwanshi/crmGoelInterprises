@@ -1,4 +1,4 @@
-import { EmployeeId } from "./employeeId.model";
+import { EmployeeId } from "./employeeId.model.ts";
 import type { Context } from "hono";
 
 
@@ -8,23 +8,6 @@ interface CreateEmployeeIdBody {
   remark: string;
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -83,25 +66,6 @@ export const getEmployeeIds = async (c: Context) => {
   } catch (error: any) {
     return c.json(
       { message: error.message || "Failed to fetch employee IDs" },
-      500
-    );
-  }
-};
-
-export const getEmployeeIdById = async (c: Context) => {
-  try {
-    const id = c.req.param("id");
-
-    const data = await EmployeeId.findById(id);
-
-    if (!data) {
-      return c.json({ message: "Employee ID not found" }, 404);
-    }
-
-    return c.json(data, 200);
-  } catch (error: any) {
-    return c.json(
-      { message: error.message || "Error fetching employee ID" },
       500
     );
   }

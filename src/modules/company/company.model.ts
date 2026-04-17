@@ -8,6 +8,7 @@ export interface ICompany extends Document {
   address?: string;
   gstNumber?: string;
   isActive: boolean;
+  prefix?: string;
   createdBy: Types.ObjectId;
 }
 
@@ -18,6 +19,7 @@ const companySchema = new Schema<ICompany>(
     phone: String,
     address: String,
     gstNumber: String,
+    prefix: String,
     isActive: { type: Boolean, default: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
   },

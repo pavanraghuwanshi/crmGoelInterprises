@@ -774,6 +774,71 @@ export const deleteUser = async (c: Context) => {
 
 
 
+// ---------------- USER DROPDOWN ----------------
+
+export const getUsersDropdown = async (c: Context) => {
+  try {
+    // ✅ query params
+    const search = c.req.query("search") || "";
+    const companyId = c.req.query("companyId");
+    const limit = parseInt(c.req.query("limit") || "20");
+    const page = parseInt(c.req.query("page") || "1");
+    const skip = (page - 1) * limit;
+
+    // ✅ base filter
+    const filter: any = {
+      role: { $ne: "admin" },
+    };
+
+    // ✅ company filter
+    if (companyId && mongoose.Types.ObjectId.isValid(companyId)) {
+      filter.companyId = new mongoose.Types.ObjectId(companyId);
+    }
+
+    // ✅ search by name OR employeeId
+    if (search) {
+      const orConditions: any[] = [
+        { name: { $regex: search, $options: "i" } },
+        { employeeId: { $regex: search, $options: "i" } },
+      ];
+
+      filter.$or = orConditions;
+    }
+
+    // ✅ fetch only required fields
+    const users = await User.find(filter)
+      .select("_id name")
+      .sort({ name: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+  const totalUsers = await User.countDocuments(filter);
+
+    return c.json(
+      {
+        success: true,
+        data: users,
+        pagination: {
+          total: totalUsers,
+          page,
+          limit,
+          totalPages: Math.ceil(totalUsers / limit),
+        },
+      },
+      200
+    );
+  } catch (error) {
+    console.error("Get Users Dropdown Error:", error);
+
+    return c.json(
+      {
+        success: false,
+        message: "Internal Server Error",
+      },
+      500
+    );
+  }
+};
 
 
 

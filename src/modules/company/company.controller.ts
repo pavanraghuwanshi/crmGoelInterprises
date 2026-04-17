@@ -1,6 +1,6 @@
 // controllers/company.controller.ts
 import type { Context } from "hono";
-import Company from "./company.model";
+import Company from "./company.model.ts";
 
 
 //  create company controller
@@ -8,7 +8,7 @@ export const createCompany = async (c: Context) => {
   try {
     const body = await c.req.json();
 
-    const { name, email, phone, address, gstNumber } = body;
+    const { name, email,  prefix, phone, address, gstNumber } = body;
 
     if (!name) {
       return c.json({ message: "Company name is required" }, 400);
@@ -19,6 +19,7 @@ export const createCompany = async (c: Context) => {
       email,
       phone,
       address,
+      prefix,
       gstNumber,
       createdBy: c.get("user")?._id, // if auth middleware
     });
@@ -79,6 +80,38 @@ export const getCompanies = async (c: Context) => {
     );
   } catch (error) {
     console.error("Get Companies Error:", error);
+    return c.json({ message: "Internal Server Error" }, 500);
+  }
+};
+
+// get company by Dropdown controller
+
+// ✅ Company Dropdown API
+export const getCompanyDropdown = async (c: Context) => {
+  try {
+    const search = c.req.query("search") || "";
+
+    // filter for search by name or prefix
+    const filter: any = {};
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { prefix: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const companies = await Company.find(filter)
+      .select("name prefix") // only send required fields
+      .sort({ name: 1 })
+      .lean();
+
+    return c.json({
+      success: true,
+      data: companies,
+    });
+  } catch (error) {
+    console.error("Get Company Dropdown Error:", error);
     return c.json({ message: "Internal Server Error" }, 500);
   }
 };

@@ -571,6 +571,117 @@ export const manualMarkAttendance = async (c: Context) => {
 
 
 
+    // ===== MONTHLY DATE WISE ATTENDANCE COUNT =====
+    // query: ?year=2026&month=4
+
+export const getAttendanceCountByMonth = async (c: Context) => {
+  try {
+    const { year, month } = c.req.query();
+
+    if (!year || !month) {
+      return c.json(
+        { message: "year and month query params are required" },
+        400
+      );
+    }
+
+    const yearNum = parseInt(year, 10);
+    const monthNum = parseInt(month, 10);
+
+    const startDate = new Date(yearNum, monthNum - 1, 1);
+    const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+    const totalDays = new Date(yearNum, monthNum, 0).getDate();
+
+    // total users
+    const totalUsers = await User.countDocuments({ role: "user" });
+
+    // attendance records
+    const records = await Attendance.find({
+      date: { $gte: startDate, $lte: endDate },
+    }).select("date status");
+
+    // calendar holidays
+    const holidays = await CalendarDay.find({
+      date: { $gte: startDate, $lte: endDate },
+      dayType: "holiday",
+    }).select("date dayType description");
+
+    const holidaySet = new Set(
+      holidays.map((h) => h.date.toISOString().split("T")[0])
+    );
+
+    const map: Record<
+      string,
+      {
+        present: number;
+        halfDay: number;
+        absent: number;
+        isHoliday: boolean;
+      }
+    > = {};
+
+    // init dates
+    for (let day = 1; day <= totalDays; day++) {
+      const dateObj = new Date(yearNum, monthNum - 1, day);
+
+      const dateStr = `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+      const weekDay = dateObj.getDay();
+      const isWeekend = weekDay === 0 || weekDay === 6;
+      const isHoliday = isWeekend || holidaySet.has(dateStr);
+
+      map[dateStr] = {
+        present: 0,
+        halfDay: 0,
+        absent: isHoliday ? 0 : totalUsers,
+        isHoliday,
+      };
+    }
+
+    // count attendance
+    for (const item of records) {
+      const d = new Date(item.date);
+
+      const dateStr = `${d.getFullYear()}-${String(
+        d.getMonth() + 1
+      ).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+      const dayData = map[dateStr];
+      if (!dayData) continue;
+
+      if (item.status === "Present") {
+        dayData.present++;
+        if (!dayData.isHoliday) dayData.absent--;
+      }
+
+      if (item.status === "Half-Day") {
+        dayData.halfDay++;
+        if (!dayData.isHoliday) dayData.absent--;
+      }
+    }
+
+    const result = Object.keys(map).map((date) => ({
+      date,
+      present: map[date]!.present,
+      halfDay: map[date]!.halfDay,
+      absent: map[date]!.absent,
+      isHoliday: map[date]!.isHoliday,
+    }));
+
+    return c.json(
+      {
+        year: yearNum,
+        month: monthNum,
+        totalUsers,
+        data: result,
+      },
+      200
+    );
+  } catch (error: any) {
+    console.error(error);
+    return c.json({ message: error.message }, 500);
+  }
+};
 
 
 
