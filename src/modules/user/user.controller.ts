@@ -6,6 +6,7 @@ import { setCookie } from "hono/cookie";
 import { decryptPassword, encryptPassword } from "../../utils/crypto.ts";
 import mongoose, { Types } from "mongoose";
 import { EmployeeId } from "./employeeId.model.ts";
+import { saveFile } from "../../utils/saveFile.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -59,9 +60,194 @@ const checkDuplicateUser = async (
 // ✅ Register
 
 
+// export const register = async (c: Context) => {
+//   try {
+//     const body = await c.req.json();
+
+//     const {
+//       name,
+//       email,
+//       password,
+//       role,
+//       createdBy,
+//       employeeObjId,
+//       uniqueId,
+//       attendancePolicyId,
+//       payrollPolicyId,
+
+//       // 🔥 NEW FIELDS
+//       otherName,
+//       category,
+//       gender,
+//       fatherName,
+//       motherName,
+//       maritalStatus,
+//       spouseName,
+//       familyDetails,
+//       dob,
+//       bloodGroup,
+//       emergencyContact,
+//       reference,
+//       academicQualification,
+//       previousWorkExperience,
+//       interviewDate,
+//       competencyMet,
+//       designation,
+//       workingHours,
+//       aadharNo,
+//       pfNo,
+//       esiNo,
+//       doj,
+//       doe,
+//       permanentAddress,
+//       currentAddress,
+//       mobileNo,
+//       companyId,
+
+//         // 🔥 New Fields
+//       profileImage,
+//       alias,
+//       contactPerson,
+//       phoneNumber,
+//       relation,
+//       familyMembers,
+//       referredBy,
+//       passingYear,
+//       otherDocuments,
+//       notes
+
+//     } = body;
+
+//     // ✅ validation
+//     if (!name || !email || !password) {
+//       return c.json({ message: "All fields are required" }, 400);
+//     }
+
+//     // ✅ logged in user
+//     const loggedInUser = c.get("user");
+
+//     if (!loggedInUser) {
+//       return c.json({ message: "Unauthorized" }, 401);
+//     }
+
+//     // ✅ safe role
+//     const safeRole =
+//       role && ["admin", "hr", "user"].includes(role) ? role : "user";
+
+//     // ✅ duplicate check
+//     const duplicate = await checkDuplicateUser(email, uniqueId);
+
+//     if (duplicate === "email") {
+//       return c.json({ message: "Email already exists" }, 400);
+//     }
+
+//     if (duplicate === "uniqueId") {
+//       return c.json({ message: "Unique ID already exists" }, 400);
+//     }
+
+//     // ✅ encrypt password
+//     const encryptedPassword = await encryptPassword(password);
+
+//     // 🔥 ROLE BASED createdBy LOGIC (UNCHANGED)
+//     let finalCreatedBy;
+
+//     if (loggedInUser.role === "admin" && createdBy) {
+//       finalCreatedBy = createdBy;
+//     } else {
+//       finalCreatedBy = loggedInUser.id;
+//     }
+
+//     // 🔥 VALIDATE EMPLOYEE (UNCHANGED)
+//     let employeeRef: any = undefined;
+
+//     if (employeeObjId) {
+//       const employee = await EmployeeId.findById(employeeObjId);
+
+//       if (!employee) {
+//         return c.json({ message: "Invalid employee ID" }, 400);
+//       }
+
+//       employeeRef = employee._id;
+//     }
+
+//     // ✅ CREATE USER (ONLY FIELDS ADDED BELOW)
+//     const user = await User.create({
+//       name,
+//       email,
+//       password: encryptedPassword,
+//       role: safeRole,
+//       createdBy: finalCreatedBy,
+//       employeeObjId: employeeRef,
+//       uniqueId,
+
+//       attendancePolicyId,
+//       payrollPolicyId,
+
+//       // 🔥 NEW FIELDS SAVE
+//       otherName,
+//       category,
+//       gender,
+//       fatherName,
+//       motherName,
+//       maritalStatus,
+//       spouseName,
+//       familyDetails,
+//       dob,
+//       bloodGroup,
+//       emergencyContact,
+//       reference,
+//       academicQualification,
+//       previousWorkExperience,
+//       interviewDate,
+//       competencyMet,
+//       designation,
+//       workingHours,
+//       aadharNo,
+//       pfNo,
+//       esiNo,
+//       doj,
+//       doe,
+//       permanentAddress,
+//       currentAddress,
+//       mobileNo,
+//       companyId,
+
+//        // 🔥 New Fields
+//       profileImage,
+//       alias,
+//       contactPerson,
+//       phoneNumber,
+//       relation,
+//       familyMembers,
+//       referredBy,
+//       passingYear,
+//       otherDocuments,
+//       notes
+//     });
+
+//     return c.json(
+//       {
+//         id: user._id,
+//         email: user.email,
+//         role: user.role,
+//         createdBy: user.createdBy,
+//         uniqueId: user.uniqueId,
+//         attendancePolicyId,
+//         payrollPolicyId
+//       },
+//       201
+//     );
+//   } catch (error) {
+//     console.error("Register Error:", error);
+//     return c.json({ message: "Internal Server Error" }, 500);
+//   }
+// };
+
 export const register = async (c: Context) => {
   try {
-    const body = await c.req.json();
+    const formData = await c.req.formData();
+
+    const body = Object.fromEntries(formData.entries());
 
     const {
       name,
@@ -74,7 +260,6 @@ export const register = async (c: Context) => {
       attendancePolicyId,
       payrollPolicyId,
 
-      // 🔥 NEW FIELDS
       otherName,
       category,
       gender,
@@ -101,27 +286,51 @@ export const register = async (c: Context) => {
       permanentAddress,
       currentAddress,
       mobileNo,
-      companyId
+      companyId,
 
-    } = body;
+      alias,
+      contactPerson,
+      phoneNumber,
+      relation,
+      familyMembers,
+      referredBy,
+      passingYear,
+      notes
+    } = body as any;
 
-    // ✅ validation
+    // 🔥 FILES
+    const profileImageFile = formData.get("profileImage") as File | null;
+    const otherDocsFiles = formData.getAll("otherDocuments") as File[];
+
+    let profileImage = "";
+    let otherDocuments: string[] = [];
+
+    if (profileImageFile && profileImageFile.size > 0) {
+      profileImage = await saveFile(profileImageFile, "profile-images");
+    }
+
+    if (otherDocsFiles.length > 0) {
+      for (const file of otherDocsFiles) {
+        if (file.size > 0) {
+          const filePath = await saveFile(file, "documents");
+          otherDocuments.push(filePath);
+        }
+      }
+    }
+
     if (!name || !email || !password) {
       return c.json({ message: "All fields are required" }, 400);
     }
 
-    // ✅ logged in user
     const loggedInUser = c.get("user");
 
     if (!loggedInUser) {
       return c.json({ message: "Unauthorized" }, 401);
     }
 
-    // ✅ safe role
     const safeRole =
       role && ["admin", "hr", "user"].includes(role) ? role : "user";
 
-    // ✅ duplicate check
     const duplicate = await checkDuplicateUser(email, uniqueId);
 
     if (duplicate === "email") {
@@ -132,10 +341,8 @@ export const register = async (c: Context) => {
       return c.json({ message: "Unique ID already exists" }, 400);
     }
 
-    // ✅ encrypt password
     const encryptedPassword = await encryptPassword(password);
 
-    // 🔥 ROLE BASED createdBy LOGIC (UNCHANGED)
     let finalCreatedBy;
 
     if (loggedInUser.role === "admin" && createdBy) {
@@ -144,7 +351,6 @@ export const register = async (c: Context) => {
       finalCreatedBy = loggedInUser.id;
     }
 
-    // 🔥 VALIDATE EMPLOYEE (UNCHANGED)
     let employeeRef: any = undefined;
 
     if (employeeObjId) {
@@ -157,7 +363,6 @@ export const register = async (c: Context) => {
       employeeRef = employee._id;
     }
 
-    // ✅ CREATE USER (ONLY FIELDS ADDED BELOW)
     const user = await User.create({
       name,
       email,
@@ -166,11 +371,9 @@ export const register = async (c: Context) => {
       createdBy: finalCreatedBy,
       employeeObjId: employeeRef,
       uniqueId,
-
       attendancePolicyId,
       payrollPolicyId,
 
-      // 🔥 NEW FIELDS SAVE
       otherName,
       category,
       gender,
@@ -197,7 +400,18 @@ export const register = async (c: Context) => {
       permanentAddress,
       currentAddress,
       mobileNo,
-      companyId
+      companyId,
+
+      profileImage,
+      alias,
+      contactPerson,
+      phoneNumber,
+      relation,
+      familyMembers,
+      referredBy,
+      passingYear,
+      otherDocuments,
+      notes
     });
 
     return c.json(
@@ -206,9 +420,7 @@ export const register = async (c: Context) => {
         email: user.email,
         role: user.role,
         createdBy: user.createdBy,
-        uniqueId: user.uniqueId,
-        attendancePolicyId,
-        payrollPolicyId
+        uniqueId: user.uniqueId
       },
       201
     );
