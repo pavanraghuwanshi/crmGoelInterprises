@@ -121,7 +121,7 @@ const userSchema = new Schema<IUser>(
 
     employeeObjId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Employee",
+      ref: "EmployeeId",
     },
 
     uniqueId: {
@@ -204,7 +204,7 @@ const userSchema = new Schema<IUser>(
     mobileNo: String,
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Employee",
+      ref: "Company",
     },
 
     // 🔥 NEW FIELDS END

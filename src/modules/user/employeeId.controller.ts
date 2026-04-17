@@ -1,5 +1,6 @@
 import { EmployeeId } from "./employeeId.model.ts";
 import type { Context } from "hono";
+import { User } from "./user.model.ts";
 
 
 // ✅ Request Types
@@ -66,6 +67,61 @@ export const getEmployeeIds = async (c: Context) => {
   } catch (error: any) {
     return c.json(
       { message: error.message || "Failed to fetch employee IDs" },
+      500
+    );
+  }
+};
+
+
+//  ✅ only unassigned employee ids with pagination and search
+export const getAvailableEmployeeIds = async (c: Context) => {
+  try {
+    const page = parseInt(c.req.query("page") || "1");
+    const limit = parseInt(c.req.query("limit") || "10");
+    const search = c.req.query("search") || "";
+
+    const skip = (page - 1) * limit;
+
+    // ✅ already assigned employee ids from users
+    const assignedIds = await User.find({
+      employeeObjId: { $exists: true, $ne: null }
+    }).distinct("employeeObjId");
+
+    // ✅ filter
+    const query: any = {
+      _id: { $nin: assignedIds }
+    };
+
+    if (search.trim()) {
+      query.employeeId = { $regex: search, $options: "i" };
+    }
+
+    const [data, total] = await Promise.all([
+      EmployeeId.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+
+      EmployeeId.countDocuments(query)
+    ]);
+
+    return c.json(
+      {
+        data,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      },
+      200
+    );
+  } catch (error: any) {
+    return c.json(
+      {
+        message: error.message || "Failed to fetch available employee IDs"
+      },
       500
     );
   }

@@ -59,190 +59,6 @@ const checkDuplicateUser = async (
 
 // ✅ Register
 
-
-// export const register = async (c: Context) => {
-//   try {
-//     const body = await c.req.json();
-
-//     const {
-//       name,
-//       email,
-//       password,
-//       role,
-//       createdBy,
-//       employeeObjId,
-//       uniqueId,
-//       attendancePolicyId,
-//       payrollPolicyId,
-
-//       // 🔥 NEW FIELDS
-//       otherName,
-//       category,
-//       gender,
-//       fatherName,
-//       motherName,
-//       maritalStatus,
-//       spouseName,
-//       familyDetails,
-//       dob,
-//       bloodGroup,
-//       emergencyContact,
-//       reference,
-//       academicQualification,
-//       previousWorkExperience,
-//       interviewDate,
-//       competencyMet,
-//       designation,
-//       workingHours,
-//       aadharNo,
-//       pfNo,
-//       esiNo,
-//       doj,
-//       doe,
-//       permanentAddress,
-//       currentAddress,
-//       mobileNo,
-//       companyId,
-
-//         // 🔥 New Fields
-//       profileImage,
-//       alias,
-//       contactPerson,
-//       phoneNumber,
-//       relation,
-//       familyMembers,
-//       referredBy,
-//       passingYear,
-//       otherDocuments,
-//       notes
-
-//     } = body;
-
-//     // ✅ validation
-//     if (!name || !email || !password) {
-//       return c.json({ message: "All fields are required" }, 400);
-//     }
-
-//     // ✅ logged in user
-//     const loggedInUser = c.get("user");
-
-//     if (!loggedInUser) {
-//       return c.json({ message: "Unauthorized" }, 401);
-//     }
-
-//     // ✅ safe role
-//     const safeRole =
-//       role && ["admin", "hr", "user"].includes(role) ? role : "user";
-
-//     // ✅ duplicate check
-//     const duplicate = await checkDuplicateUser(email, uniqueId);
-
-//     if (duplicate === "email") {
-//       return c.json({ message: "Email already exists" }, 400);
-//     }
-
-//     if (duplicate === "uniqueId") {
-//       return c.json({ message: "Unique ID already exists" }, 400);
-//     }
-
-//     // ✅ encrypt password
-//     const encryptedPassword = await encryptPassword(password);
-
-//     // 🔥 ROLE BASED createdBy LOGIC (UNCHANGED)
-//     let finalCreatedBy;
-
-//     if (loggedInUser.role === "admin" && createdBy) {
-//       finalCreatedBy = createdBy;
-//     } else {
-//       finalCreatedBy = loggedInUser.id;
-//     }
-
-//     // 🔥 VALIDATE EMPLOYEE (UNCHANGED)
-//     let employeeRef: any = undefined;
-
-//     if (employeeObjId) {
-//       const employee = await EmployeeId.findById(employeeObjId);
-
-//       if (!employee) {
-//         return c.json({ message: "Invalid employee ID" }, 400);
-//       }
-
-//       employeeRef = employee._id;
-//     }
-
-//     // ✅ CREATE USER (ONLY FIELDS ADDED BELOW)
-//     const user = await User.create({
-//       name,
-//       email,
-//       password: encryptedPassword,
-//       role: safeRole,
-//       createdBy: finalCreatedBy,
-//       employeeObjId: employeeRef,
-//       uniqueId,
-
-//       attendancePolicyId,
-//       payrollPolicyId,
-
-//       // 🔥 NEW FIELDS SAVE
-//       otherName,
-//       category,
-//       gender,
-//       fatherName,
-//       motherName,
-//       maritalStatus,
-//       spouseName,
-//       familyDetails,
-//       dob,
-//       bloodGroup,
-//       emergencyContact,
-//       reference,
-//       academicQualification,
-//       previousWorkExperience,
-//       interviewDate,
-//       competencyMet,
-//       designation,
-//       workingHours,
-//       aadharNo,
-//       pfNo,
-//       esiNo,
-//       doj,
-//       doe,
-//       permanentAddress,
-//       currentAddress,
-//       mobileNo,
-//       companyId,
-
-//        // 🔥 New Fields
-//       profileImage,
-//       alias,
-//       contactPerson,
-//       phoneNumber,
-//       relation,
-//       familyMembers,
-//       referredBy,
-//       passingYear,
-//       otherDocuments,
-//       notes
-//     });
-
-//     return c.json(
-//       {
-//         id: user._id,
-//         email: user.email,
-//         role: user.role,
-//         createdBy: user.createdBy,
-//         uniqueId: user.uniqueId,
-//         attendancePolicyId,
-//         payrollPolicyId
-//       },
-//       201
-//     );
-//   } catch (error) {
-//     console.error("Register Error:", error);
-//     return c.json({ message: "Internal Server Error" }, 500);
-//   }
-// };
-
 export const register = async (c: Context) => {
   try {
     const formData = await c.req.formData();
@@ -613,11 +429,28 @@ export const getUsers = async (c: Context) => {
       }
 
       filter.$or = orConditions;
+
+        // 👉 search by employee code from populated ref
+      const employeeMatches = await EmployeeId.find({
+        employeeId: { $regex: search, $options: "i" }
+      }).select("_id");
+
+      if (employeeMatches.length > 0) {
+        orConditions.push({
+          employeeObjId: {
+            $in: employeeMatches.map((e) => e._id)
+          }
+        });
+      }
+
     }
 
     // ✅ fetch users (lean = fast + plain object)
     const users = await User.find(filter)
       .sort({ createdAt: -1 })
+      .populate("payrollPolicyId", "name")
+      .populate("attendancePolicyId", "name")
+      .populate("employeeObjId", "employeeId")
       .skip(skip)
       .limit(limit)
       .lean<IUserPlain[]>(); // ✅ array type
