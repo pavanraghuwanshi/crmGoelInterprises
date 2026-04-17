@@ -84,8 +84,11 @@ export interface IUser extends Document {
     familyMembers?: string;
     referredBy?: string;
     passingYear?: string;
-    otherDocuments?: string[];
-    notes?: string;
+    otherDocuments?: {
+      title?: string;
+      file?: string;
+    }[];
+  notes?: string;
 }
 
 // 📦 Schema
@@ -215,7 +218,12 @@ const userSchema = new Schema<IUser>(
   familyMembers: { type: String },
   referredBy: { type: String },
   passingYear: { type: String },
-  otherDocuments: [{ type: String }],
+  otherDocuments: [
+    {
+      title: { type: String },
+      file: { type: String }
+    }
+  ],
   notes: { type: String },
   },
   { timestamps: true }

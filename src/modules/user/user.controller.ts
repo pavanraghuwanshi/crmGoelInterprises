@@ -246,7 +246,6 @@ const checkDuplicateUser = async (
 export const register = async (c: Context) => {
   try {
     const formData = await c.req.formData();
-
     const body = Object.fromEntries(formData.entries());
 
     const {
@@ -301,25 +300,71 @@ export const register = async (c: Context) => {
     // 🔥 FILES
     const profileImageFile = formData.get("profileImage") as File | null;
     const otherDocsFiles = formData.getAll("otherDocuments") as File[];
+    const otherDocsTitles = formData.getAll("otherDocumentsTitle") as string[];
 
     let profileImage = "";
-    let otherDocuments: string[] = [];
+    let otherDocuments: { title: string; file: string }[] = [];
 
+    // ✅ Basic Validation
+    if (!name?.toString().trim()) {
+      return c.json({ message: "Name is required" }, 400);
+    }
+
+    if (!email?.toString().trim()) {
+      return c.json({ message: "Email is required" }, 400);
+    }
+
+    if (!password?.toString().trim()) {
+      return c.json({ message: "Password is required" }, 400);
+    }
+
+    // ✅ Email Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.toString())) {
+      return c.json({ message: "Invalid email format" }, 400);
+    }
+
+    // ✅ Password Length
+    if (password.toString().length < 6) {
+      return c.json(
+        { message: "Password must be at least 6 characters" },
+        400
+      );
+    }
+
+    // ✅ Mobile Validation
+    if (mobileNo && !/^\d{10}$/.test(mobileNo.toString())) {
+      return c.json({ message: "Mobile number must be 10 digits" }, 400);
+    }
+
+    // ✅ Aadhar Validation
+    if (aadharNo && !/^\d{12}$/.test(aadharNo.toString())) {
+      return c.json({ message: "Aadhar number must be 12 digits" }, 400);
+    }
+
+    // 🔥 Profile Image Save
     if (profileImageFile && profileImageFile.size > 0) {
       profileImage = await saveFile(profileImageFile, "profile-images");
     }
 
+    // 🔥 Other Documents Save with Title
     if (otherDocsFiles.length > 0) {
-      for (const file of otherDocsFiles) {
-        if (file.size > 0) {
-          const filePath = await saveFile(file, "documents");
-          otherDocuments.push(filePath);
-        }
+      for (let i = 0; i < otherDocsFiles.length; i++) {
+      const file = otherDocsFiles[i];
+
+      if (!file) continue; // ✅ TS fix
+
+      const title = otherDocsTitles[i] || `Document ${i + 1}`;
+
+      if (file.size > 0) {
+        const filePath = await saveFile(file, "documents");
+
+        otherDocuments.push({
+          title: title.toString(),
+          file: filePath
+        });
       }
     }
-
-    if (!name || !email || !password) {
-      return c.json({ message: "All fields are required" }, 400);
     }
 
     const loggedInUser = c.get("user");
@@ -329,7 +374,9 @@ export const register = async (c: Context) => {
     }
 
     const safeRole =
-      role && ["admin", "hr", "user"].includes(role) ? role : "user";
+      role && ["admin", "hr", "user"].includes(role.toString())
+        ? role
+        : "user";
 
     const duplicate = await checkDuplicateUser(email, uniqueId);
 
@@ -416,17 +463,31 @@ export const register = async (c: Context) => {
 
     return c.json(
       {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-        createdBy: user.createdBy,
-        uniqueId: user.uniqueId
+        message: "User registered successfully",
+        data: user
       },
       201
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Register Error:", error);
-    return c.json({ message: "Internal Server Error" }, 500);
+
+    if (error?.name === "ValidationError") {
+      return c.json({ message: error.message }, 400);
+    }
+
+    if (error?.code === 11000) {
+      return c.json(
+        { message: "Duplicate value found. Email or Unique ID exists." },
+        400
+      );
+    }
+
+    return c.json(
+      {
+        message: error?.message || "Something went wrong"
+      },
+      500
+    );
   }
 };
 
