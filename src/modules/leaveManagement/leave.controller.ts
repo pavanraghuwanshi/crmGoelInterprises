@@ -95,6 +95,59 @@ export const getLeaves = async (c: Context) => {
   }
 };
 
+//  Get /leave by usetr Id
+
+// GET /leave/user?userId=xxx&year=2026&month=4
+export const getLeavesByUserId = async (c: Context) => {
+  try {
+    const userId = c.req.query("userId");
+    const year = parseInt(c.req.query("year") || "");
+    const month = parseInt(c.req.query("month") || "");
+
+    // ✅ validation
+    if (!userId) {
+      return c.json({ message: "userId is required" }, 400);
+    }
+
+    if (!year || !month) {
+      return c.json({ message: "year and month are required" }, 400);
+    }
+
+    if (month < 1 || month > 12) {
+      return c.json({ message: "month must be between 1 to 12" }, 400);
+    }
+
+    // ✅ month range
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    // ✅ find leaves overlapping this month
+    const leaves = await Leave.find({
+      userId,
+      fromDate: { $lte: endDate },
+      toDate: { $gte: startDate }
+    })
+      .sort({ fromDate: 1 })
+      .lean();
+
+    return c.json(
+      {
+        success: true,
+        data: leaves
+      },
+      200
+    );
+  } catch (error: any) {
+    return c.json(
+      {
+        success: false,
+        message: error.message || "Failed to fetch leaves"
+      },
+      500
+    );
+  }
+};
+
 
 // PUT /leave/update-status/:id
 export const updateLeaveStatus = async (c: Context) => {

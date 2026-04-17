@@ -451,6 +451,7 @@ export const getUsers = async (c: Context) => {
       .populate("payrollPolicyId", "name")
       .populate("attendancePolicyId", "name")
       .populate("employeeObjId", "employeeId")
+      .populate("companyId", "name")
       .skip(skip)
       .limit(limit)
       .lean<IUserPlain[]>(); // ✅ array type
