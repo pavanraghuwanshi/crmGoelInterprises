@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import DocCenter from "./doccenter.model";
+import { calculateNextOccurrence } from "./reminder.service";
 import path from "path";
 import fs from "fs";
 
@@ -43,10 +44,23 @@ export const uploadDocument = async (c: Context) => {
     // Extract metadata (everything else)
     const metadata: Record<string, any> = {};
     formData.forEach((value, key) => {
-      if (!["title", "documentType", "files"].includes(key)) {
+      if (!["title", "documentType", "files", "reminder"].includes(key)) {
         metadata[key] = value;
       }
     });
+
+    // Handle reminder
+    let reminder = null;
+    if (formData.has("reminder")) {
+      try {
+        reminder = JSON.parse(formData.get("reminder") as string);
+        if (reminder.enabled) {
+          reminder.nextOccurrence = calculateNextOccurrence(reminder);
+        }
+      } catch (e) {
+        console.error("Failed to parse reminder JSON", e);
+      }
+    }
 
     const newDoc = new DocCenter({
       title,
@@ -54,6 +68,7 @@ export const uploadDocument = async (c: Context) => {
       createdBy: user.id,
       files: uploadedFilePaths,
       metadata,
+      reminder: reminder,
     });
 
     await newDoc.save();
@@ -147,38 +162,45 @@ export const patchDocument = async (c: Context) => {
       if (formData.has("metadata")) {
         try {
           updateData.metadata = JSON.parse(formData.get("metadata") as string);
-        } catch (e) {
-          // If not valid JSON, treat as string or ignore
-        }
+        } catch (e) {}
       }
 
-      // Handle file updates — append new files to existing ones
+      // Handle reminder if passed as JSON string in form-data
+      if (formData.has("reminder")) {
+        try {
+          updateData.reminder = JSON.parse(formData.get("reminder") as string);
+        } catch (e) {}
+      }
+
+      // Handle file updates
       const files = formData.getAll("files");
       if (files.length > 0 && files[0] instanceof File) {
         const newFilePaths: string[] = [];
         const uploadDir = path.join(process.cwd(), "uploads", "doccenter");
-        
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
         for (const file of files) {
           if (file instanceof File) {
-            const timestamp = Date.now();
-            const sanitizedName = file.name.replace(/\s+/g, "_");
-            const uniqueName = `${timestamp}-${sanitizedName}`;
-            const filePath = path.join(uploadDir, uniqueName);
-            await Bun.write(filePath, file);
-            newFilePaths.push(`/uploads/doccenter/${uniqueName}`);
+              const timestamp = Date.now();
+              const sanitizedName = file.name.replace(/\s+/g, "_");
+              const uniqueName = `${timestamp}-${sanitizedName}`;
+              const filePath = path.join(uploadDir, uniqueName);
+              await Bun.write(filePath, file);
+              newFilePaths.push(`/uploads/doccenter/${uniqueName}`);
           }
         }
-
-        // Push new files to the existing files array (do NOT replace or delete old files)
         updateData.$push = { files: { $each: newFilePaths } };
       }
     } else {
       // Regular JSON update
       updateData = await c.req.json();
+    }
+
+    // Handle reminder next occurrence calculation if updated
+    if (updateData.reminder) {
+      if (updateData.reminder.enabled) {
+        updateData.reminder.nextOccurrence = calculateNextOccurrence(updateData.reminder);
+      }
     }
 
     // Separate $push from $set so MongoDB handles both operators correctly
@@ -190,7 +212,7 @@ export const patchDocument = async (c: Context) => {
     const updatedDoc = await DocCenter.findByIdAndUpdate(
       id,
       mongoUpdate,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedDoc) {

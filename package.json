@@ -21,12 +21,16 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "hono": "^4.12.9",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.3.2"
+    "mongoose": "^9.3.2",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.5"
   }
 }
