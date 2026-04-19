@@ -76,26 +76,77 @@ export const applyLeave = async (c: Context) => {
 export const getLeaves = async (c: Context) => {
   try {
     const status = c.req.query("status");
-    const user = c.get("user");
-    const companyId = c.get("companyId")
+    const month = c.req.query("month");
+    const year = c.req.query("year");
+    const companyId = c.get("companyId");
 
-    const filter: any = {
-    };
+    const filter: any = {};
 
     if (status) {
-      filter.status = status;
-    }
-    if (companyId) {
-      filter.companyId=companyId;
+      filter.status = status; // must be "Pending" | "Approved" | "Rejected"
     }
 
+    if (companyId) {
+      filter.companyId = companyId;
+    }
+
+    // 📅 Date filter
+    if (month && year) {
+      const startDate = new Date(Number(year), Number(month) - 1, 1);
+      const endDate = new Date(Number(year), Number(month), 1);
+
+      filter.createdAt = {
+        $gte: startDate,
+        $lt: endDate,
+      };
+    } else if (year) {
+      const startDate = new Date(Number(year), 0, 1);
+      const endDate = new Date(Number(year) + 1, 0, 1);
+
+      filter.createdAt = {
+        $gte: startDate,
+        $lt: endDate,
+      };
+    }
+
+    // 📦 Data
     const leaves = await Leave.find(filter)
       .populate("userId", "name email uniqueId")
       .sort({ createdAt: -1 })
       .lean();
 
+    // 📊 Aggregation
+    const stats = await Leave.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
 
-    return c.json({ success: true, data: leaves }, 200);
+    // ✅ Use exact enum keys
+    const counts: any = {
+      total: 0,
+      Pending: 0,
+      Approved: 0,
+      Rejected: 0,
+    };
+
+    stats.forEach((item) => {
+      counts[item._id] = item.count; // matches "Pending", etc.
+      counts.total += item.count;
+    });
+
+    return c.json(
+      {
+        success: true,
+        data: leaves,
+        counts,
+      },
+      200
+    );
   } catch (error: any) {
     return c.json({ message: error.message }, 500);
   }
