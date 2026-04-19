@@ -701,12 +701,40 @@ export const getUsersDropdown = async (c: Context) => {
     }
 
     // ✅ fetch only required fields
-    const users = await User.find(filter)
-      .select("_id name")
-      .sort({ name: 1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const users = await User.aggregate([
+      {
+        $lookup: {
+          from: "employeeids", // collection name
+          localField: "employeeObjId",
+          foreignField: "_id",
+          as: "employeeData"
+        }
+      },
+      {
+        $unwind: {
+          path: "$employeeData",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { "employeeData.employeeId": { $regex: search, $options: "i" } }
+          ]
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          employeeId: "$employeeData.employeeId"
+        }
+      },
+      { $sort: { name: 1 } },
+      { $skip: skip },
+      { $limit: limit }
+    ]);
   const totalUsers = await User.countDocuments(filter);
 
     return c.json(
