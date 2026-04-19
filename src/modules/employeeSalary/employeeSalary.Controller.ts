@@ -5,6 +5,7 @@ import { Attendance } from "../attendance/attendance.model";
 import mongoose from "mongoose";
 import { Types } from "mongoose";
 import { CalendarDay } from "../attendance/companyCalendar.model";
+import { User } from "../user/user.model";
 
 
 //  add employee salary
@@ -43,6 +44,81 @@ export const addEmployeeSalary = async (c: Context) => {
   }
 };
 
+
+// ===== GET ALL EMPLOYEE SALARIES =====
+export const getEmployeeSalaries = async (c: Context) => {
+  try {
+    const {
+      page = "1",
+      limit = "10",
+      search = "",
+      userId,
+      salaryType,
+    } = c.req.query();
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const filter: any = {};
+
+    // ===== USER ID FILTER =====
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      filter.userId = new mongoose.Types.ObjectId(userId);
+    }
+
+    // ===== SALARY TYPE FILTER =====
+    if (salaryType === "hourly") filter.hourly = true;
+    if (salaryType === "monthly") filter.monthly = true;
+    if (salaryType === "daily") filter.daily = true;
+
+    // ===== SEARCH BY USER NAME / EMAIL =====
+    if (search) {
+      const users = await User.find({
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      }).select("_id");
+
+      const userIds = users.map((u) => u._id);
+
+      filter.userId = { $in: userIds };
+    }
+
+    // ===== GET DATA =====
+    const data = await EmployeeSalary.find(filter)
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await EmployeeSalary.countDocuments(filter);
+
+    return c.json(
+      {
+        message: "Employee salaries fetched successfully",
+        data,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      },
+      200
+    );
+  } catch (err: any) {
+    console.error(err);
+    return c.json(
+      {
+        message: "Internal server error",
+        error: err.message,
+      },
+      500
+    );
+  }
+};
 
 
 //  update employee salary
@@ -134,8 +210,11 @@ export const deleteEmployeeSalary = async (c: Context) => {
       return c.json({ message: "Invalid userId" }, 400);
     }
 
-    // ===== FIND & DELETE =====
-    const deletedSalary = await EmployeeSalary.findOneAndDelete({ userId });
+    const deletedSalary = await EmployeeSalary.findOneAndDelete(
+      {
+        userId: new mongoose.Types.ObjectId(userId),
+      } as any
+    );
 
     if (!deletedSalary) {
       return c.json(
