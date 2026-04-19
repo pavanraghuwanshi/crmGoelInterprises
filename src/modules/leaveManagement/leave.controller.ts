@@ -11,44 +11,73 @@ export const applyLeave = async (c: Context) => {
   try {
     const body = await c.req.json();
 
-    const { employeeId, fromDate, toDate, leaveType, reason } = body;
+    const { userId, employeeId, fromDate, toDate, leaveType, reason } = body;
 
     // ✅ validation
-    if (!employeeId || !fromDate || !toDate || !leaveType) {
-      return c.json({ message: "userId, fromDate, toDate, leaveType required" }, 400);
+    if (!fromDate || !toDate || !leaveType) {
+      return c.json(
+        { message: "fromDate, toDate, leaveType required" },
+        400
+      );
     }
 
-     // ✅ STEP 1: Find Employee
-    const employee = await EmployeeId.findOne({ employeeId }).lean();
+    let user;
 
-    if (!employee) {
-      return c.json({ message: "Employee not found" }, 404);
+    // ✅ Case 1: userId provided
+    if (userId) {
+      user = await User.findById(userId).lean();
+
+      if (!user) {
+        return c.json({ message: "User not found" }, 404);
+      }
     }
 
-    // ✅ STEP 2: Find User using employeeId._id
-    const user = await User.findOne({
-      employeeObjId: employee._id
-    }).lean();
-    
-    if (!user) {
-      return c.json({ message: "User not found" }, 404);
+    // ✅ Case 2: employeeId provided
+    else if (employeeId) {
+      const employee = await EmployeeId.findOne({ employeeId }).lean();
+
+      if (!employee) {
+        return c.json({ message: "Employee not found" }, 404);
+      }
+
+      user = await User.findOne({
+        employeeObjId: employee._id,
+      }).lean();
+
+      if (!user) {
+        return c.json({ message: "User not found" }, 404);
+      }
     }
 
-    // ✅ date handling
+    // ❌ Neither provided
+    else {
+      return c.json(
+        { message: "userId or employeeId is required" },
+        400
+      );
+    }
+
+    // 📅 Date validation
     const start = new Date(fromDate);
     const end = new Date(toDate);
 
     if (start > end) {
-      return c.json({ message: "fromDate cannot be greater than toDate" }, 400);
+      return c.json(
+        { message: "fromDate cannot be greater than toDate" },
+        400
+      );
     }
 
     const totalDays =
-      Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      Math.floor(
+        (end.getTime() - start.getTime()) /
+          (1000 * 60 * 60 * 24)
+      ) + 1;
 
-    // ✅ create leave
+    // ✅ Create leave
     const leave = await Leave.create({
       userId: user._id,
-      companyId: user.companyId, // 🔥 fetched from user
+      companyId: user.companyId,
       fromDate: start,
       toDate: end,
       totalDays,
@@ -65,11 +94,9 @@ export const applyLeave = async (c: Context) => {
       201
     );
   } catch (error: any) {
-    console.error(error);
     return c.json({ message: error.message }, 500);
   }
 };
-
 
 
 // GET /leave
