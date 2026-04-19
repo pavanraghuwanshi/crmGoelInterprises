@@ -61,7 +61,15 @@ export const createEmployeeId = async (c: Context) => {
 
 export const getEmployeeIds = async (c: Context) => {
   try {
-    const data = await EmployeeId.find().sort({ createdAt: -1 });
+    const companyId = c.req.query("companyId"); 
+
+    const filter: any = {};
+
+    if (companyId) {
+      filter.companyId = companyId;
+    }
+
+    const data = await EmployeeId.find(filter).sort({ createdAt: -1 });
 
     return c.json(data, 200);
   } catch (error: any) {
