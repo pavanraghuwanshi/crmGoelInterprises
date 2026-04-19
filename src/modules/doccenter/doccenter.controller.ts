@@ -198,8 +198,21 @@ export const patchDocument = async (c: Context) => {
 
     // Handle reminder next occurrence calculation if updated
     if (updateData.reminder) {
-      if (updateData.reminder.enabled) {
-        updateData.reminder.nextOccurrence = calculateNextOccurrence(updateData.reminder);
+      const existingDoc = await DocCenter.findById(id);
+      if (existingDoc) {
+        // Merge existing reminder with new updates to handle partial updates
+        const currentReminder = existingDoc.reminder ? (existingDoc.reminder as any).toObject ? (existingDoc.reminder as any).toObject() : existingDoc.reminder : {};
+        const mergedReminder = { 
+          frequency: "once", 
+          startDate: new Date(), 
+          ...currentReminder, 
+          ...updateData.reminder 
+        };
+        
+        if (mergedReminder.enabled) {
+          mergedReminder.nextOccurrence = calculateNextOccurrence(mergedReminder);
+        }
+        updateData.reminder = mergedReminder;
       }
     }
 
