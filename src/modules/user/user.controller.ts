@@ -760,6 +760,190 @@ export const getUsersDropdown = async (c: Context) => {
 
 
 
+
+
+// =============================
+// GET USERS STATS / COUNTS API
+// Overall Total
+// Male / Female Count
+// Company Wise Count
+// =============================
+
+export const getUsersStats = async (c: Context) => {
+  try {
+    // =============================
+    // BASE FILTER (exclude admin)
+    // =============================
+    const baseFilter: any = {
+      role: { $ne: "admin" },
+    };
+
+    // =============================
+    // OVERALL TOTAL USERS
+    // =============================
+    const totalUsers = await User.countDocuments(baseFilter);
+
+    // =============================
+    // GENDER COUNTS
+    // =============================
+    const genderStats = await User.aggregate([
+      { $match: baseFilter },
+      {
+        $group: {
+          _id: "$gender",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    let male = 0;
+    let female = 0;
+    let other = 0;
+
+    genderStats.forEach((item) => {
+      const gender = item._id?.toLowerCase();
+
+      if (gender === "male") male = item.count;
+      else if (gender === "female") female = item.count;
+      else other = item.count;
+    });
+
+    // =============================
+    // COMPANY WISE USERS COUNT
+    // =============================
+    const companyWise = await User.aggregate([
+      { $match: baseFilter },
+
+      {
+        $group: {
+          _id: "$companyId",
+          totalUsers: { $sum: 1 },
+
+          male: {
+            $sum: {
+              $cond: [{ $eq: [{ $toLower: "$gender" }, "male"] }, 1, 0],
+            },
+          },
+
+          female: {
+            $sum: {
+              $cond: [{ $eq: [{ $toLower: "$gender" }, "female"] }, 1, 0],
+            },
+          },
+
+          other: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: [{ $toLower: "$gender" }, "male"] },
+                    { $ne: [{ $toLower: "$gender" }, "female"] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+
+      // ✅ string to ObjectId convert
+      {
+        $addFields: {
+          companyObjectId: {
+            $cond: [
+              { $ne: ["$_id", null] },
+              { $toObjectId: "$_id" },
+              null
+            ]
+          }
+        }
+      },
+
+      {
+      $lookup: {
+        from: "companies",
+        let: { companyId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $eq: [
+                  { $toString: "$_id" },
+                  { $toString: "$$companyId" }
+                ]
+              }
+            }
+          },
+          {
+            $project: {
+              name: 1
+            }
+          }
+        ],
+        as: "company"
+      }
+    },
+
+      {
+        $unwind: {
+          path: "$company",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      {
+        $project: {
+          _id: 0,
+          companyId: "$_id",
+          companyName: { $ifNull: ["$company.name", "No Company"] },
+          totalUsers: 1,
+          male: 1,
+          female: 1,
+          other: 1,
+        },
+      },
+
+      { $sort: { totalUsers: -1 } },
+    ]);
+
+    // =============================
+    // RESPONSE
+    // =============================
+    return c.json(
+      {
+        success: true,
+        data: {
+          overall: {
+            totalUsers,
+            male,
+            female,
+            other,
+          },
+          companyWise,
+        },
+      },
+      200
+    );
+  } catch (error) {
+    console.error("Get Users Stats Error:", error);
+
+    return c.json(
+      {
+        success: false,
+        message: "Internal Server Error",
+      },
+      500
+    );
+  }
+};
+
+
+
+
+
+
 // ✅ Login
 
 export const login = async (c: Context) => {

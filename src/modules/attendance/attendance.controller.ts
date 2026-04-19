@@ -298,6 +298,129 @@ export const getAttendances = async (c: Context) => {
 };
 
 
+// ===== GET ATTENDANCES (DEFAULT TODAY) WITH DATE FILTER + SUMMARY =====
+
+export const getAttendancesWithSummary = async (c: Context) => {
+  try {
+    const {
+      page = "1",
+      limit = "10",
+      status,
+      userId,
+      search,
+      startDate,
+      endDate,
+    } = c.req.query();
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+
+    // ===== DATE RANGE =====
+    let start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    let end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    // if query params given
+    if (startDate) {
+      start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+    }
+
+    if (endDate) {
+      end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+    }
+
+    // if only startDate given
+    if (startDate && !endDate) {
+      end = new Date(start);
+      end.setDate(end.getDate() + 1);
+    }
+
+    // ===== FILTER =====
+    const filter: any = {
+      date: { $gte: start, $lte: end },
+    };
+
+    if (status) filter.status = status;
+    if (userId) filter.userId = new Types.ObjectId(userId);
+
+    // ===== SEARCH USER =====
+    if (search) {
+      const users = await User.find({
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      }).select("_id");
+
+      const userIds = users.map((u) => u._id);
+      filter.userId = { $in: userIds };
+    }
+
+    // ===== DATA WITH PAGINATION =====
+    const data = await Attendance.find(filter)
+      .populate("userId", "name email")
+      .sort({ date: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum);
+
+    const total = await Attendance.countDocuments(filter);
+
+    // ===== SUMMARY (FULL DATE RANGE, NO PAGINATION) =====
+    const attendanceDocs = await Attendance.find(filter);
+
+    const presentCount = attendanceDocs.filter(
+      (a) => a.status === "Present"
+    ).length;
+
+    const absentCount = attendanceDocs.filter(
+      (a) => a.status === "Absent"
+    ).length;
+
+    const markedUserIds = attendanceDocs.map((a) => a.userId.toString());
+
+    // ===== LEAVES =====
+    const leaves = await Leave.find({
+      fromDate: { $lte: end },
+      toDate: { $gte: start },
+    });
+
+    const leaveUserIds = leaves.map((l) => l.userId.toString());
+
+    const totalUsers = await User.countDocuments();
+
+    const notMarkedCount =
+      totalUsers - new Set([...markedUserIds, ...leaveUserIds]).size;
+
+    // ===== RESPONSE =====
+    return c.json(
+      {
+        summary: {
+          totalUsers,
+          present: presentCount,
+          absent: absentCount,
+          onLeave: leaveUserIds.length,
+          notMarked: notMarkedCount,
+        },
+        data,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        startDate: start,
+        endDate: end,
+      },
+      200
+    );
+  } catch (error: any) {
+    console.error(error);
+    return c.json({ message: error.message }, 500);
+  }
+};
+
+
 //  ====== Update Attendance Status Of User
 
 export const updateAttendanceStatus = async (c: Context) => {
@@ -738,42 +861,62 @@ export const getUserMonthlyAttendance = async (c: Context) => {
 
 export const getTodayAttendanceSummary = async (c: Context) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { startDate, endDate } = c.req.query();
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    // ===== DEFAULT DATE RANGE (TODAY) =====
+    let start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    let end = new Date(start);
+    end.setDate(start.getDate() + 1);
+
+    // ===== IF QUERY PARAMS PROVIDED =====
+    if (startDate && endDate) {
+      start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+
+      end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+    }
 
     // ===== TOTAL USERS =====
     const totalUsers = await User.countDocuments();
 
-    // ===== TODAY ATTENDANCE =====
-    const todayAttendance = await Attendance.find({
-      date: { $gte: today, $lt: tomorrow },
+    // ===== ATTENDANCE IN RANGE =====
+    const attendanceData = await Attendance.find({
+      date: { $gte: start, $lte: end },
     });
 
     // ===== PRESENT & ABSENT =====
-    const presentCount = todayAttendance.filter(a => a.status === "Present").length;
-    const absentCount = todayAttendance.filter(a => a.status === "Absent").length;
+    const presentCount = attendanceData.filter(
+      (a) => a.status === "Present"
+    ).length;
+
+    const absentCount = attendanceData.filter(
+      (a) => a.status === "Absent"
+    ).length;
 
     // ===== USERS WHO MARKED ATTENDANCE =====
-    const markedUserIds = todayAttendance.map(a => a.userId.toString());
+    const markedUserIds = attendanceData.map((a) => a.userId.toString());
 
-    // ===== TODAY LEAVES =====
-    const todayLeaves = await Leave.find({
-      fromDate: { $lte: today },
-      toDate: { $gte: today },
+    // ===== LEAVES IN RANGE =====
+    const leaveData = await Leave.find({
+      fromDate: { $lte: end },
+      toDate: { $gte: start },
     });
 
-    const leaveUserIds = todayLeaves.map(l => l.userId.toString());
+    const leaveUserIds = leaveData.map((l) => l.userId.toString());
     const leaveCount = leaveUserIds.length;
 
     // ===== NOT MARKED =====
-    const notMarkedCount =
-      totalUsers - new Set([...markedUserIds, ...leaveUserIds]).size;
+    const uniqueUsers = new Set([...markedUserIds, ...leaveUserIds]);
+
+    const notMarkedCount = totalUsers - uniqueUsers.size;
 
     return c.json(
       {
+        startDate: start,
+        endDate: end,
         totalUsers,
         present: presentCount,
         absent: absentCount,

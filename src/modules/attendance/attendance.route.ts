@@ -12,7 +12,8 @@ import {
   getManualAttendancePendingUsers,
   manualMarkAttendance,
   getAttendanceCountByMonth,
-  getTodayAttendanceSummary
+  getTodayAttendanceSummary,
+  getAttendancesWithSummary
 } from "./attendance.controller";
 
 const attendanceRoutes = new Hono();
@@ -31,6 +32,9 @@ attendanceRoutes.post("/upload", uploadBiometricData);
 
 // get Attendance
 attendanceRoutes.get("/", getAttendances);
+
+// get Attendance with summary
+attendanceRoutes.get("/with-summary", getAttendancesWithSummary);
 
 // get Attendance
 attendanceRoutes.get("/dashboard-count", getTodayAttendanceSummary);
