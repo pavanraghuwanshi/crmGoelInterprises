@@ -310,6 +310,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
       search,
       startDate,
       endDate,
+      companyId,
     } = c.req.query();
 
     const pageNum = parseInt(page, 10);
@@ -322,7 +323,6 @@ export const getAttendancesWithSummary = async (c: Context) => {
     let end = new Date(start);
     end.setDate(end.getDate() + 1);
 
-    // if query params given
     if (startDate) {
       start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -333,43 +333,44 @@ export const getAttendancesWithSummary = async (c: Context) => {
       end.setHours(23, 59, 59, 999);
     }
 
-    // if only startDate given
     if (startDate && !endDate) {
       end = new Date(start);
       end.setDate(end.getDate() + 1);
     }
 
-    // ===== FILTER =====
+    // ===== BASE FILTER =====
     const filter: any = {
       date: { $gte: start, $lte: end },
     };
 
-    if (status) filter.status = status;
     if (userId) filter.userId = new Types.ObjectId(userId);
+    if (companyId) filter.companyId = new Types.ObjectId(companyId);
+
+    // normal attendance status only
+    if (status && status !== "On Leave" && status !== "Not Marked") {
+      filter.status = status;
+    }
 
     // ===== SEARCH USER =====
     if (search) {
-      const users = await User.find({
+      const userSearchFilter: any = {
         $or: [
           { name: { $regex: search, $options: "i" } },
           { email: { $regex: search, $options: "i" } },
         ],
-      }).select("_id");
+      };
+
+      if (companyId) {
+        userSearchFilter.companyId = new Types.ObjectId(companyId);
+      }
+
+      const users = await User.find(userSearchFilter).select("_id");
 
       const userIds = users.map((u) => u._id);
       filter.userId = { $in: userIds };
     }
 
-    // ===== DATA WITH PAGINATION =====
-    const data = await Attendance.find(filter)
-      .populate("userId", "name email")
-      .sort({ date: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum);
-
-    const total = await Attendance.countDocuments(filter);
-
-    // ===== SUMMARY (FULL DATE RANGE, NO PAGINATION) =====
+    // ===== SUMMARY DATA =====
     const attendanceDocs = await Attendance.find(filter);
 
     const presentCount = attendanceDocs.filter(
@@ -383,17 +384,48 @@ export const getAttendancesWithSummary = async (c: Context) => {
     const markedUserIds = attendanceDocs.map((a) => a.userId.toString());
 
     // ===== LEAVES =====
-    const leaves = await Leave.find({
+    const leaveFilter: any = {
       fromDate: { $lte: end },
       toDate: { $gte: start },
-    });
+    };
+
+    if (companyId) leaveFilter.companyId = new Types.ObjectId(companyId);
+
+    const leaves = await Leave.find(leaveFilter);
 
     const leaveUserIds = leaves.map((l) => l.userId.toString());
 
-    const totalUsers = await User.countDocuments();
+    // ===== TOTAL USERS =====
+    const userFilter: any = {};
+    if (companyId) userFilter.companyId = new Types.ObjectId(companyId);
 
-    const notMarkedCount =
-      totalUsers - new Set([...markedUserIds, ...leaveUserIds]).size;
+    const totalUsers = await User.countDocuments(userFilter);
+
+    const notMarkedIds = [...new Set([...markedUserIds, ...leaveUserIds])];
+
+    const notMarkedCount = totalUsers - notMarkedIds.length;
+
+    // ===== EXTRA STATUS FILTER =====
+    if (status === "On Leave") {
+      filter.userId = {
+        $in: leaveUserIds.map((id) => new Types.ObjectId(id)),
+      };
+    }
+
+    if (status === "Not Marked") {
+      filter.userId = {
+        $nin: notMarkedIds.map((id) => new Types.ObjectId(id)),
+      };
+    }
+
+    // ===== DATA WITH PAGINATION =====
+    const data = await Attendance.find(filter)
+      .populate("userId", "name email")
+      .sort({ date: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum);
+
+    const total = await Attendance.countDocuments(filter);
 
     // ===== RESPONSE =====
     return c.json(
