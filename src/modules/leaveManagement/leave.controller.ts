@@ -228,7 +228,7 @@ export const updateLeaveStatus = async (c: Context) => {
 
     leave.status = status;
     leave.isPaid = isPaid ?? false;
-    leave.approvedBy = user._id;
+    leave.approvedBy = user.id;
     leave.approvedAt = new Date();
 
     if (status === "Rejected") {
