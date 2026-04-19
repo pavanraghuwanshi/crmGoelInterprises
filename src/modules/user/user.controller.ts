@@ -692,19 +692,16 @@ export const getUsersDropdown = async (c: Context) => {
 
     // ✅ search by name OR employeeId
     if (search) {
-      const orConditions: any[] = [
+      filter.$or = [
         { name: { $regex: search, $options: "i" } },
-        { employeeId: { $regex: search, $options: "i" } },
+        { "employeeData.employeeId": { $regex: search, $options: "i" } }
       ];
-
-      filter.$or = orConditions;
     }
-
-    // ✅ fetch only required fields
+    
     const users = await User.aggregate([
       {
         $lookup: {
-          from: "employeeids", // collection name
+          from: "employeeids",
           localField: "employeeObjId",
           foreignField: "_id",
           as: "employeeData"
@@ -717,12 +714,7 @@ export const getUsersDropdown = async (c: Context) => {
         }
       },
       {
-        $match: {
-          $or: [
-            { name: { $regex: search, $options: "i" } },
-            { "employeeData.employeeId": { $regex: search, $options: "i" } }
-          ]
-        }
+        $match: filter
       },
       {
         $project: {
