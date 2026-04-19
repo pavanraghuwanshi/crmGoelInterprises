@@ -80,17 +80,20 @@ export const getLeaves = async (c: Context) => {
     const companyId = c.get("companyId")
 
     const filter: any = {
-      companyId: companyId,
     };
 
     if (status) {
       filter.status = status;
+    }
+    if (companyId) {
+      filter.companyId=companyId;
     }
 
     const leaves = await Leave.find(filter)
       .populate("userId", "name email uniqueId")
       .sort({ createdAt: -1 })
       .lean();
+
 
     return c.json({ success: true, data: leaves }, 200);
   } catch (error: any) {
