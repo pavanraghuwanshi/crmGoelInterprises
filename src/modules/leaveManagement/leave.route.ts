@@ -6,6 +6,6 @@ const leaveRoutes = new Hono();
 leaveRoutes.post("/",applyLeave );
 leaveRoutes.get("/",getLeaves );
 leaveRoutes.get("/by-user",getLeavesByUserId );
-leaveRoutes.put("/",updateLeaveStatus );
+leaveRoutes.put("/:id",updateLeaveStatus );
 
 export default leaveRoutes;
