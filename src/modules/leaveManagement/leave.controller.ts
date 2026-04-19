@@ -77,9 +77,10 @@ export const getLeaves = async (c: Context) => {
   try {
     const status = c.req.query("status");
     const user = c.get("user");
+    const companyId = c.get("companyId")
 
     const filter: any = {
-      companyId: user.companyId,
+      companyId: companyId,
     };
 
     if (status) {
