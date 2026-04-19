@@ -5,6 +5,8 @@ import { Attendance } from "./attendance.model";
 import { User } from "../user/user.model";
 import type { JwtPayload } from "../auth/auth.type";
 import { Types } from "mongoose";
+import Leave from "../leaveManagement/leave.model";
+
 
 
 
@@ -716,6 +718,65 @@ export const getUserMonthlyAttendance = async (c: Context) => {
       .sort({ date: 1 }); // sort by date ascending
 
     return c.json({ data, month, year }, 200);
+  } catch (error: any) {
+    console.error(error);
+    return c.json({ message: error.message }, 500);
+  }
+};
+
+
+
+
+
+
+//   DashBoard Data Api
+
+export const getTodayAttendanceSummary = async (c: Context) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    // ===== TOTAL USERS =====
+    const totalUsers = await User.countDocuments();
+
+    // ===== TODAY ATTENDANCE =====
+    const todayAttendance = await Attendance.find({
+      date: { $gte: today, $lt: tomorrow },
+    });
+
+    // ===== PRESENT & ABSENT =====
+    const presentCount = todayAttendance.filter(a => a.status === "Present").length;
+    const absentCount = todayAttendance.filter(a => a.status === "Absent").length;
+
+    // ===== USERS WHO MARKED ATTENDANCE =====
+    const markedUserIds = todayAttendance.map(a => a.userId.toString());
+
+    // ===== TODAY LEAVES =====
+    const todayLeaves = await Leave.find({
+      fromDate: { $lte: today },
+      toDate: { $gte: today },
+    });
+
+    const leaveUserIds = todayLeaves.map(l => l.userId.toString());
+    const leaveCount = leaveUserIds.length;
+
+    // ===== NOT MARKED =====
+    const notMarkedCount =
+      totalUsers - new Set([...markedUserIds, ...leaveUserIds]).size;
+
+    return c.json(
+      {
+        totalUsers,
+        present: presentCount,
+        absent: absentCount,
+        onLeave: leaveCount,
+        notMarked: notMarkedCount,
+      },
+      200
+    );
   } catch (error: any) {
     console.error(error);
     return c.json({ message: error.message }, 500);
