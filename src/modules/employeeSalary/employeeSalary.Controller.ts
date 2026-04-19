@@ -48,35 +48,118 @@ export const addEmployeeSalary = async (c: Context) => {
 //  update employee salary
 export const updateEmployeeSalary = async (c: Context) => {
   try {
+    const userId = c.req.param("userId");
     const body = await c.req.json();
-    const { userId, hourly, monthly, daily, hourlyRate, monthlySalary, dailyRate } = body;
 
-    if (!userId) return c.json({ message: "userId is required" }, 400);
-    if (!hourly && !monthly && !daily)
-      return c.json({ message: "At least one salary type must be true" }, 400);
-    if (!mongoose.Types.ObjectId.isValid(userId))
+    const {
+      hourly,
+      monthly,
+      daily,
+      hourlyRate,
+      monthlySalary,
+      dailyRate,
+    } = body;
+
+    // ===== VALIDATION =====
+    if (!userId) {
+      return c.json({ message: "userId is required" }, 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
       return c.json({ message: "Invalid userId" }, 400);
+    }
 
-    // Build update object
-    const updateData: Partial<typeof body> = {
+    if (!hourly && !monthly && !daily) {
+      return c.json(
+        { message: "At least one salary type must be true" },
+        400
+      );
+    }
+
+    // ===== UPDATE DATA =====
+    const updateData = {
       hourly: !!hourly,
       monthly: !!monthly,
       daily: !!daily,
-      hourlyRate: hourlyRate || undefined,
-      monthlySalary: monthlySalary || undefined,
-      dailyRate: dailyRate || undefined,
+      hourlyRate: hourlyRate ?? undefined,
+      monthlySalary: monthlySalary ?? undefined,
+      dailyRate: dailyRate ?? undefined,
     };
 
     const salary = await EmployeeSalary.findOneAndUpdate(
-      { userId },
+      {
+        userId: new mongoose.Types.ObjectId(userId),
+      } as any,
       { $set: updateData },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
     );
 
-    return c.json({ message: "Employee salary saved successfully", data: salary }, 200);
+    return c.json(
+      {
+        message: "Employee salary updated successfully",
+        data: salary,
+      },
+      200
+    );
   } catch (err: any) {
     console.error(err);
-    return c.json({ message: "Internal server error", error: err.message }, 500);
+    return c.json(
+      {
+        message: "Internal server error",
+        error: err.message,
+      },
+      500
+    );
+  }
+};
+
+
+
+
+// ===== DELETE EMPLOYEE SALARY =====
+export const deleteEmployeeSalary = async (c: Context) => {
+  try {
+    const userId = c.req.param("userId") || c.req.query("userId");
+
+    // ===== VALIDATION =====
+    if (!userId) {
+      return c.json({ message: "userId is required" }, 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return c.json({ message: "Invalid userId" }, 400);
+    }
+
+    // ===== FIND & DELETE =====
+    const deletedSalary = await EmployeeSalary.findOneAndDelete({ userId });
+
+    if (!deletedSalary) {
+      return c.json(
+        { message: "Salary record not found for this employee" },
+        404
+      );
+    }
+
+    return c.json(
+      {
+        message: "Employee salary deleted successfully",
+        data: deletedSalary,
+      },
+      200
+    );
+  } catch (err: any) {
+    console.error(err);
+    return c.json(
+      {
+        message: "Internal server error",
+        error: err.message,
+      },
+      500
+    );
   }
 };
 
