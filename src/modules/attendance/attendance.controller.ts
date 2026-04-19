@@ -150,8 +150,11 @@ export const uploadBiometricData = async (c: Context) => {
 
     const userMap = new Map<number, any>();
     const userPolicyMap = new Map<number, any>();
+    const userCompanyMap = new Map<number, any>();
+
     users.forEach((u: any) => {
       userMap.set(u.uniqueId, u._id);
+      userCompanyMap.set(u.uniqueId, u.companyId); // ✅ store companyId
       if (u.attendancePolicyId) userPolicyMap.set(u.uniqueId, u.attendancePolicyId);
     });
 
@@ -173,6 +176,7 @@ export const uploadBiometricData = async (c: Context) => {
 
     for (const [enNo, datesObj] of map.entries()) {
       const userId = userMap.get(enNo);
+      const companyId = userCompanyMap.get(enNo);
       if (!userId) continue;
 
       const policy: any = userPolicyMap.get(enNo) || activePolicy;
@@ -230,6 +234,7 @@ export const uploadBiometricData = async (c: Context) => {
             update: {
               $set: {
                 uniqueId: enNo,
+                companyId, // ✅ added
                 punchIn,
                 punchOut,
                 status,
