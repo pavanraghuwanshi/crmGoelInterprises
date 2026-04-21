@@ -523,40 +523,55 @@ export const getUserById = async (c: Context) => {
 export const updateUser = async (c: Context) => {
   try {
     const id = c.req.param("id");
-    const body = await c.req.json<Record<string, any>>();
 
-    // 👉 Check user exist
+    // 🔥 formData (same as register)
+    const formData = await c.req.formData();
+    const body = Object.fromEntries(formData.entries());
+
     const user = await User.findById(id);
     if (!user) {
       return c.json({ message: "User not found" }, 404);
     }
 
-    // 👉 Get schema fields dynamically (ALL fields incl new ones)
+    // ---------------- HELPERS ----------------
+    const toNumber = (val: any): number | undefined => {
+      if (val === undefined || val === null || val === "") return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    };
+
+    // ---------------- ALLOWED FIELDS ----------------
     const allowedFields = Object.keys(User.schema.paths);
-
-    // ❌ restricted fields
     const restrictedFields = ["_id", "__v", "createdAt", "updatedAt"];
-
     const updatableFields = allowedFields.filter(
-      (field) => !restrictedFields.includes(field)
+      (f) => !restrictedFields.includes(f)
     );
 
     // ---------------- VALIDATIONS ----------------
 
-    // 👉 Email validation
+    // ✅ Email
     if (body.email !== undefined) {
-      const emailRegex = /^\S+@\S+\.\S+$/;
+      const email = body.email.toString().trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-      if (typeof body.email !== "string" || !emailRegex.test(body.email)) {
+      if (!emailRegex.test(email)) {
         return c.json({ message: "Invalid email format" }, 400);
       }
 
+      const uniqueId =
+        body.uniqueId !== undefined
+          ? toNumber(body.uniqueId)
+          : user.uniqueId;
+
+      if (body.uniqueId !== undefined && uniqueId === undefined) {
+        return c.json({ message: "Unique ID must be a number" }, 400);
+      }
+
       const duplicate = await checkDuplicateUser(
-        body.email,
-        body.uniqueId ?? user.uniqueId,
+        email,
+        uniqueId !== undefined ? Number(uniqueId) : undefined,
         id
       );
-
       if (duplicate === "email") {
         return c.json({ message: "Email already exists" }, 400);
       }
@@ -566,44 +581,95 @@ export const updateUser = async (c: Context) => {
       }
     }
 
-    // 👉 Role validation
-    if (body.role !== undefined) {
-      if (!["admin", "hr", "user"].includes(body.role)) {
-        return c.json({ message: "Invalid role" }, 400);
-      }
+    // ✅ Role
+    if (
+      body.role &&
+      !["admin", "hr", "user"].includes(body.role.toString())
+    ) {
+      return c.json({ message: "Invalid role" }, 400);
     }
 
-    // 👉 UniqueId validation (IMPORTANT 🔥)
+    // ✅ UniqueId
     if (body.uniqueId !== undefined) {
+      const uniqueId = toNumber(body.uniqueId);
+
+      if (uniqueId === undefined) {
+        return c.json({ message: "Unique ID must be a number" }, 400);
+      }
+
       const duplicate = await checkDuplicateUser(
         body.email ?? user.email,
-        body.uniqueId,
+        uniqueId,
         id
       );
 
       if (duplicate === "uniqueId") {
         return c.json({ message: "Unique ID already exists" }, 400);
       }
+
+      user.uniqueId = uniqueId;
+      user.markModified("uniqueId");
     }
 
-    // ---------------- PASSWORD FIX 🔥 ----------------
+    // ✅ Mobile
+    if (body.mobileNo && !/^\d{10}$/.test(body.mobileNo.toString())) {
+      return c.json({ message: "Mobile number must be 10 digits" }, 400);
+    }
 
-    if (body.password !== undefined) {
-      if (typeof body.password !== "string" || body.password.length < 6) {
+    // ✅ Aadhar
+    if (body.aadharNo && !/^\d{12}$/.test(body.aadharNo.toString())) {
+      return c.json({ message: "Aadhar number must be 12 digits" }, 400);
+    }
+
+    // ---------------- PASSWORD ----------------
+    if (body.password) {
+      const pass = body.password.toString();
+
+      if (pass.length < 6) {
         return c.json(
           { message: "Password must be at least 6 characters" },
           400
         );
       }
 
-      const encrypted = await encryptPassword(body.password);
-
-      user.password = encrypted;
-
-      // 🔥 force mongoose detect change
+      user.password = await encryptPassword(pass);
       user.markModified("password");
 
       delete body.password;
+    }
+
+    // ---------------- FILE HANDLING ----------------
+
+    const profileImageFile = formData.get("profileImage") as File | null;
+    const otherDocsFiles = formData.getAll("otherDocuments") as File[];
+    const otherDocsTitles = formData.getAll("otherDocumentsTitle") as string[];
+
+    // ✅ Profile Image
+    if (profileImageFile && profileImageFile.size > 0) {
+      const uploaded = await saveFile(profileImageFile, "profile-images");
+      user.profileImage = uploaded;
+      user.markModified("profileImage");
+    }
+
+    // ✅ Other Documents
+    if (otherDocsFiles.length > 0) {
+      const otherDocuments: { title: string; file: string }[] = [];
+
+      for (let i = 0; i < otherDocsFiles.length; i++) {
+        const file = otherDocsFiles[i];
+        if (!file || file.size === 0) continue;
+
+        const title = otherDocsTitles[i] || `Document ${i + 1}`;
+        const filePath = await saveFile(file, "documents");
+
+        otherDocuments.push({
+          title: title.toString(),
+          file: filePath,
+        });
+      }
+
+      user.otherDocuments = otherDocuments;
+      user.markModified("otherDocuments");
     }
 
     // ---------------- DYNAMIC UPDATE ----------------
@@ -617,30 +683,33 @@ export const updateUser = async (c: Context) => {
     await user.save();
 
     // ---------------- RESPONSE ----------------
+    return c.json(
+      {
+        message: "User updated successfully",
+        data: user,
+      },
+      200
+    );
+  } catch (error: any) {
+    console.error("Update Error:", error);
 
-    let decryptedPassword: string | null = null;
+    if (error?.name === "ValidationError") {
+      return c.json({ message: error.message }, 400);
+    }
 
-    try {
-      if (user.password) {
-        decryptedPassword = decryptPassword(user.password);
-      }
-    } catch (err) {
-      console.error("Decrypt failed");
+    if (error?.code === 11000) {
+      return c.json(
+        { message: "Duplicate value found. Email or Unique ID exists." },
+        400
+      );
     }
 
     return c.json(
       {
-        message: "User updated successfully",
-        user: {
-          ...user.toObject(),
-          password: decryptedPassword // ⚠️ only for testing
-        },
+        message: error?.message || "Internal Server Error",
       },
-      200
+      500
     );
-  } catch (error) {
-    console.error("Update Error:", error);
-    return c.json({ message: "Internal Server Error" }, 500);
   }
 };
 
