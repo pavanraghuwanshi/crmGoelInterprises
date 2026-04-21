@@ -47,6 +47,7 @@ export const createEmployeeId = async (c: Context) => {
 
     const data = await EmployeeId.create({
       employeeId,
+      prefix,
       remark,
     });
 
@@ -88,7 +89,7 @@ export const getAvailableEmployeeIds = async (c: Context) => {
     const page = parseInt(c.req.query("page") || "1");
     const limit = parseInt(c.req.query("limit") || "10");
     const search = c.req.query("search") || "";
-    const companyId = c.req.query("companyId")
+    const prefix = c.req.query("prefix")
 
     const skip = (page - 1) * limit;
 
@@ -105,8 +106,8 @@ export const getAvailableEmployeeIds = async (c: Context) => {
     if (search.trim()) {
       query.employeeId = { $regex: search, $options: "i" };
     }
-    if(companyId){
-      query.companyId = new mongoose.Types.ObjectId(companyId) 
+    if(prefix){
+      query.prefix = prefix;
     }
 
     const [data, total] = await Promise.all([

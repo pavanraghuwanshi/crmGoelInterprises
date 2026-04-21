@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IEmployeeId extends Document {
   employeeId: string;
   remark?: string;
+  prefix:string;
 }
 
 const employeeIdSchema = new Schema<IEmployeeId>(
@@ -12,6 +13,11 @@ const employeeIdSchema = new Schema<IEmployeeId>(
       required: true,
       unique: true,
       trim: true,
+    },
+    prefix:{
+      type:String,
+      require:true,
+      unique:true
     },
     remark: {
       type: String,
