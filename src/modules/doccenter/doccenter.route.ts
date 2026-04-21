@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import { uploadDocument, getDocuments, getDocumentById, deleteDocument, patchDocument, deleteDocumentFiles } from "./doccenter.controller";
+import { uploadDocument, getDocuments, getDocumentById, deleteDocument, patchDocument, deleteDocumentFiles, getUpcomingReminders } from "./doccenter.controller";
 import { verifyToken } from "../../middleware/auth.middleware";
 
 const docCenterRoutes = new Hono();
 
-// Auth required for all doccenter routes
 docCenterRoutes.use("*", verifyToken);
 
+docCenterRoutes.get("/reminders/upcoming", getUpcomingReminders);
 docCenterRoutes.post("/", uploadDocument);
 docCenterRoutes.get("/", getDocuments);
 docCenterRoutes.get("/:id", getDocumentById);

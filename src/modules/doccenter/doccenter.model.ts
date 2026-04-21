@@ -7,6 +7,7 @@ export interface IReminder {
   startDate: Date;
   time: string;
   nextOccurrence?: Date;
+  lastEmailSentDate?: Date; // Added to track daily emails
   recipientEmails: string[];
   subject?: string;
   message?: string;
@@ -52,6 +53,7 @@ const DocCenterSchema: Schema = new Schema(
       startDate: { type: Date },
       time: { type: String },
       nextOccurrence: { type: Date },
+      lastEmailSentDate: { type: Date }, // Added
       recipientEmails: [{ type: String }],
       subject: { type: String },
       message: { type: String },
