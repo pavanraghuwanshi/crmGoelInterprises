@@ -1,6 +1,7 @@
 import { EmployeeId } from "./employeeId.model.ts";
 import type { Context } from "hono";
 import { User } from "./user.model.ts";
+import mongoose from "mongoose";
 
 
 // ✅ Request Types
@@ -87,6 +88,7 @@ export const getAvailableEmployeeIds = async (c: Context) => {
     const page = parseInt(c.req.query("page") || "1");
     const limit = parseInt(c.req.query("limit") || "10");
     const search = c.req.query("search") || "";
+    const companyId = c.req.query("companyId")
 
     const skip = (page - 1) * limit;
 
@@ -102,6 +104,9 @@ export const getAvailableEmployeeIds = async (c: Context) => {
 
     if (search.trim()) {
       query.employeeId = { $regex: search, $options: "i" };
+    }
+    if(companyId){
+      query.companyId = new mongoose.Types.ObjectId(companyId) 
     }
 
     const [data, total] = await Promise.all([
