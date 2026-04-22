@@ -911,39 +911,66 @@ export const getTodayAttendanceSummary = async (c: Context) => {
       end.setHours(23, 59, 59, 999);
     }
 
+    // ===== USER FILTER (REMOVE ADMIN + OPTIONAL ACTIVE USERS) =====
+    const userFilter: any = {
+      role: { $ne: "admin" },
+      // isActive: true, // agar field hai to enable kar
+    };
+
     // ===== TOTAL USERS =====
-    const totalUsers = await User.countDocuments();
+    const users = await User.find(userFilter).select("_id");
+    const totalUsers = users.length;
+    const validUserIds = new Set(users.map((u) => u._id.toString()));
 
     // ===== ATTENDANCE IN RANGE =====
     const attendanceData = await Attendance.find({
       date: { $gte: start, $lte: end },
+      userId: { $in: [...validUserIds] }, // only valid users
     });
 
-    // ===== PRESENT & ABSENT =====
-    const presentCount = attendanceData.filter(
-      (a) => a.status === "Present"
-    ).length;
+    // ===== PRESENT & ABSENT (UNIQUE USERS) =====
+    const presentUsers = new Set<string>();
+    const absentUsers = new Set<string>();
 
-    const absentCount = attendanceData.filter(
-      (a) => a.status === "Absent"
-    ).length;
+    attendanceData.forEach((a) => {
+      const userId = a.userId.toString();
 
-    // ===== USERS WHO MARKED ATTENDANCE =====
-    const markedUserIds = attendanceData.map((a) => a.userId.toString());
+      if (a.status === "Present") {
+        presentUsers.add(userId);
+      } else if (a.status === "Absent") {
+        absentUsers.add(userId);
+      }
+    });
 
     // ===== LEAVES IN RANGE =====
     const leaveData = await Leave.find({
       fromDate: { $lte: end },
       toDate: { $gte: start },
+      userId: { $in: [...validUserIds] },
     });
 
-    const leaveUserIds = leaveData.map((l) => l.userId.toString());
-    const leaveCount = leaveUserIds.length;
+    const leaveUsers = new Set(
+      leaveData.map((l) => l.userId.toString())
+    );
 
-    // ===== NOT MARKED =====
-    const uniqueUsers = new Set([...markedUserIds, ...leaveUserIds]);
+    // ===== REMOVE OVERLAP (LEAVE > PRESENT > ABSENT) =====
+    leaveUsers.forEach((id) => {
+      presentUsers.delete(id);
+      absentUsers.delete(id);
+    });
 
-    const notMarkedCount = totalUsers - uniqueUsers.size;
+    // ===== FINAL COUNTS =====
+    const presentCount = presentUsers.size;
+    const absentCount = absentUsers.size;
+    const leaveCount = leaveUsers.size;
+
+    const markedUsers = new Set([
+      ...presentUsers,
+      ...absentUsers,
+      ...leaveUsers,
+    ]);
+
+    const notMarkedCount = totalUsers - markedUsers.size;
 
     return c.json(
       {
