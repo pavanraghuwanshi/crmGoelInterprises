@@ -313,131 +313,146 @@ export const getAttendancesWithSummary = async (c: Context) => {
       companyId,
     } = c.req.query();
 
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
 
     // ===== DATE RANGE =====
-    let start = new Date();
+    let start = startDate ? new Date(startDate) : new Date();
     start.setHours(0, 0, 0, 0);
 
-    let end = new Date(start);
-    end.setDate(end.getDate() + 1);
+    let end = endDate ? new Date(endDate) : new Date(start);
+    end.setHours(23, 59, 59, 999);
 
-    if (startDate) {
-      start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-    }
-
-    if (endDate) {
-      end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-    }
-
-    if (startDate && !endDate) {
-      end = new Date(start);
-      end.setDate(end.getDate() + 1);
-    }
-
-    // ===== BASE FILTER =====
-    const filter: any = {
-      date: { $gte: start, $lte: end },
+    // ===== USER FILTER (NO ADMIN) =====
+    const baseUserFilter: any = {
+      role: { $ne: "admin" },
     };
 
-    if (userId) filter.userId = new Types.ObjectId(userId);
-    if (companyId) filter.companyId = new Types.ObjectId(companyId);
-
-    // normal attendance status only
-    if (status && status !== "On Leave" && status !== "Not Marked") {
-      filter.status = status;
+    if (companyId) {
+      baseUserFilter.companyId = new Types.ObjectId(companyId);
     }
 
-    // ===== SEARCH USER =====
+    // ===== SEARCH FILTER =====
+    const searchFilter: any = { ...baseUserFilter };
+
     if (search) {
-      const userSearchFilter: any = {
-        $or: [
-          { name: { $regex: search, $options: "i" } },
-          { email: { $regex: search, $options: "i" } },
-        ],
-      };
-
-      if (companyId) {
-        userSearchFilter.companyId = new Types.ObjectId(companyId);
-      }
-
-      const users = await User.find(userSearchFilter).select("_id");
-
-      const userIds = users.map((u) => u._id);
-      filter.userId = { $in: userIds };
+      searchFilter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
     }
 
-    // ===== SUMMARY DATA =====
-    const attendanceDocs = await Attendance.find(filter);
+    if (userId) {
+      searchFilter._id = new Types.ObjectId(userId);
+    }
 
-    const presentCount = attendanceDocs.filter(
-      (a) => a.status === "Present"
-    ).length;
+    // ===== ALL USERS (FOR SUMMARY) =====
+    const allUsers = await User.find(baseUserFilter).select("_id name email");
+    const allUserIds = allUsers.map((u) => u._id.toString());
 
-    const absentCount = attendanceDocs.filter(
-      (a) => a.status === "Absent"
-    ).length;
+    const totalUsers = allUsers.length;
 
-    const markedUserIds = attendanceDocs.map((a) => a.userId.toString());
+    // ===== FILTERED USERS (FOR DATA) =====
+    const filteredUsers = await User.find(searchFilter).select(
+      "_id name email"
+    );
+
+    const filteredUserIds = filteredUsers.map((u) =>
+      u._id.toString()
+    );
+
+    // ===== ATTENDANCE =====
+    const attendanceDocs = await Attendance.find({
+      userId: { $in: allUserIds },
+      date: { $gte: start, $lte: end },
+    });
+
+    const attendanceMap = new Map();
+
+    attendanceDocs.forEach((a) => {
+      attendanceMap.set(a.userId.toString(), a);
+    });
 
     // ===== LEAVES =====
-    const leaveFilter: any = {
+    const leaves = await Leave.find({
+      userId: { $in: allUserIds },
+      status: "Approved",
       fromDate: { $lte: end },
       toDate: { $gte: start },
-    };
+    });
 
-    if (companyId) leaveFilter.companyId = new Types.ObjectId(companyId);
+    const leaveSet = new Set(
+      leaves.map((l) => l.userId.toString())
+    );
 
-    const leaves = await Leave.find(leaveFilter);
+    // ===== SUMMARY (IMPORTANT: NO STATUS FILTER HERE) =====
+    let present = 0;
+    let absent = 0;
+    let onLeave = 0;
+    let notMarked = 0;
 
-    const leaveUserIds = leaves.map((l) => l.userId.toString());
+    const finalAllUsers: any[] = [];
 
-    // ===== TOTAL USERS =====
-    const userFilter: any = {};
-    if (companyId) userFilter.companyId = new Types.ObjectId(companyId);
+    for (const user of allUsers) {
+      const uid = user._id.toString();
+      const attendance = attendanceMap.get(uid);
 
-    const totalUsers = await User.countDocuments(userFilter);
+      if (attendance) {
+        if (attendance.status === "Present") present++;
+        else if (attendance.status === "Absent") absent++;
 
-    const notMarkedIds = [...new Set([...markedUserIds, ...leaveUserIds])];
-
-    const notMarkedCount = totalUsers - notMarkedIds.length;
-
-    // ===== EXTRA STATUS FILTER =====
-    if (status === "On Leave") {
-      filter.userId = {
-        $in: leaveUserIds.map((id) => new Types.ObjectId(id)),
-      };
+        finalAllUsers.push({
+          user,
+          attendance,
+          status: attendance.status,
+        });
+      } else if (leaveSet.has(uid)) {
+        onLeave++;
+        finalAllUsers.push({
+          user,
+          attendance: null,
+          status: "On Leave",
+        });
+      } else {
+        notMarked++;
+        finalAllUsers.push({
+          user,
+          attendance: null,
+          status: "Not Marked",
+        });
+      }
     }
 
-    if (status === "Not Marked") {
-      filter.userId = {
-        $nin: notMarkedIds.map((id) => new Types.ObjectId(id)),
-      };
+    // ===== DATA FILTER (STATUS APPLIES HERE ONLY) =====
+    let finalFiltered = finalAllUsers.filter((u) =>
+      filteredUserIds.includes(u.user._id.toString())
+    );
+
+    if (status) {
+      finalFiltered = finalFiltered.filter(
+        (u) => u.status === status
+      );
     }
 
-    // ===== DATA WITH PAGINATION =====
-    const data = await Attendance.find(filter)
-      .populate("userId", "name email")
-      .sort({ date: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum);
+    // ===== PAGINATION =====
+    const total = finalFiltered.length;
 
-    const total = await Attendance.countDocuments(filter);
+    const paginated = finalFiltered.slice(
+      (pageNum - 1) * limitNum,
+      pageNum * limitNum
+    );
 
     // ===== RESPONSE =====
     return c.json(
       {
         summary: {
           totalUsers,
-          present: presentCount,
-          absent: absentCount,
-          onLeave: leaveUserIds.length,
-          notMarked: notMarkedCount,
+          present,
+          absent,
+          onLeave,
+          notMarked,
         },
-        data,
+        data: paginated,
         total,
         page: pageNum,
         limit: limitNum,
@@ -451,7 +466,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
     return c.json({ message: error.message }, 500);
   }
 };
-
+ 
 
 //  ====== Update Attendance Status Of User
 
