@@ -1,6 +1,5 @@
 import type { Context } from "hono";
 import DocCenter from "./doccenter.model";
-import { calculateNextOccurrence } from "./reminder.service";
 import path from "path";
 import fs from "fs";
 
@@ -49,18 +48,6 @@ export const uploadDocument = async (c: Context) => {
       }
     });
 
-    // Handle reminder
-    let reminder = null;
-    if (formData.has("reminder")) {
-      try {
-        reminder = JSON.parse(formData.get("reminder") as string);
-        if (reminder.enabled) {
-          reminder.nextOccurrence = calculateNextOccurrence(reminder);
-        }
-      } catch (e) {
-        console.error("Failed to parse reminder JSON", e);
-      }
-    }
 
     const newDoc = new DocCenter({
       title,
@@ -68,7 +55,6 @@ export const uploadDocument = async (c: Context) => {
       createdBy: user.id,
       files: uploadedFilePaths,
       metadata,
-      reminder: reminder,
     });
 
     await newDoc.save();
@@ -166,12 +152,6 @@ export const patchDocument = async (c: Context) => {
         } catch (e) {}
       }
 
-      // Handle reminder if passed as JSON string in form-data
-      if (formData.has("reminder")) {
-        try {
-          updateData.reminder = JSON.parse(formData.get("reminder") as string);
-        } catch (e) {}
-      }
 
       // Handle file updates
       const files = formData.getAll("files");
@@ -202,34 +182,6 @@ export const patchDocument = async (c: Context) => {
       return c.json({ error: "Document not found" }, 404);
     }
 
-    // Special Action: "done" - Clicked by user to resolve current reminder
-    if (updateData.action === "done") {
-      if (existingDoc.reminder && existingDoc.reminder.enabled) {
-        const currentReminder = (existingDoc.reminder as any).toObject ? (existingDoc.reminder as any).toObject() : existingDoc.reminder;
-        
-        if (currentReminder.frequency === "once") {
-          updateData.reminder = { ...currentReminder, enabled: false };
-        } else {
-          // Move to next occurrence
-          const next = calculateNextOccurrence(currentReminder, currentReminder.nextOccurrence);
-          updateData.reminder = { ...currentReminder, nextOccurrence: next, lastEmailSentDate: null };
-        }
-      }
-    } else if (updateData.reminder) {
-      // Manual reminder update
-      const currentReminder = existingDoc.reminder ? (existingDoc.reminder as any).toObject ? (existingDoc.reminder as any).toObject() : existingDoc.reminder : {};
-      const mergedReminder = { 
-        frequency: "once", 
-        startDate: new Date(), 
-        ...currentReminder, 
-        ...updateData.reminder 
-      };
-      
-      if (mergedReminder.enabled) {
-        mergedReminder.nextOccurrence = calculateNextOccurrence(mergedReminder);
-      }
-      updateData.reminder = mergedReminder;
-    }
 
     // Separate $push from $set so MongoDB handles both operators correctly
     const { $push, action, ...setFields } = updateData;
@@ -244,7 +196,7 @@ export const patchDocument = async (c: Context) => {
     );
 
     return c.json({
-      message: updateData.action === "done" ? "Reminder marked as done" : "Document updated successfully",
+      message: "Document updated successfully",
       data: updatedDoc
     });
   } catch (error: any) {
@@ -326,87 +278,3 @@ export const deleteDocumentFiles = async (c: Context) => {
   }
 };
 
-const getReminderThreshold = (frequency: string): number => {
-  switch (frequency) {
-    case "daily": return parseInt(process.env.REMINDER_THRESHOLD_DAILY || "0");
-    case "weekly": return parseInt(process.env.REMINDER_THRESHOLD_WEEKLY || "1");
-    case "monthly": return parseInt(process.env.REMINDER_THRESHOLD_MONTHLY || "5");
-    case "yearly": return parseInt(process.env.REMINDER_THRESHOLD_YEARLY || "15");
-    case "once": return parseInt(process.env.REMINDER_THRESHOLD_ONCE || "5");
-    case "custom": return parseInt(process.env.REMINDER_THRESHOLD_CUSTOM || "5");
-    default: return parseInt(process.env.REMINDER_DAYS_THRESHOLD || "5");
-  }
-};
-
-export const getUpcomingReminders = async (c: Context) => {
-  try {
-    const user = c.get("user");
-    if (!user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const now = new Date();
-    
-    // Fetch all enabled reminders for the user
-    const allEnabledReminders = await DocCenter.find({
-      createdBy: user.id,
-      "reminder.enabled": true,
-      "reminder.nextOccurrence": { $exists: true }
-    }).populate("createdBy", "name email");
-
-    // Filter by their respective thresholds
-    const upcomingReminders = allEnabledReminders.filter(doc => {
-      if (!doc.reminder || !doc.reminder.nextOccurrence) return false;
-      
-      const threshold = getReminderThreshold(doc.reminder.frequency);
-      const triggerDate = new Date(doc.reminder.nextOccurrence);
-      triggerDate.setDate(triggerDate.getDate() - threshold);
-      
-      // It's upcoming if we are past the trigger date
-      // We keep showing it until it's manually extended (even after nextOccurrence)
-      return now >= triggerDate;
-    });
-
-    // Industry standard statistics
-    const totalCount = upcomingReminders.length;
-    
-    // Group by document type
-    const byType = upcomingReminders.reduce((acc: Record<string, number>, doc) => {
-      const type = doc.documentType || "Other";
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Urgency based on nextOccurrence (not threshold)
-    const urgency = {
-      urgent: upcomingReminders.filter(r => {
-        const diff = (r.reminder?.nextOccurrence?.getTime() || 0) - now.getTime();
-        return diff <= (24 * 60 * 60 * 1000); // 24 hours
-      }).length,
-      upcoming: upcomingReminders.filter(r => {
-        const diff = (r.reminder?.nextOccurrence?.getTime() || 0) - now.getTime();
-        return diff > (24 * 60 * 60 * 1000);
-      }).length
-    };
-
-    return c.json({
-      summary: {
-        totalCount,
-        byType,
-        urgency,
-        thresholds: {
-          daily: getReminderThreshold("daily"),
-          weekly: getReminderThreshold("weekly"),
-          monthly: getReminderThreshold("monthly"),
-          yearly: getReminderThreshold("yearly"),
-          once: getReminderThreshold("once"),
-          custom: getReminderThreshold("custom")
-        }
-      },
-      data: upcomingReminders
-    });
-  } catch (error: any) {
-    console.error("Get upcoming reminders error:", error);
-    return c.json({ error: error.message || "Failed to fetch upcoming reminders" }, 500);
-  }
-};

@@ -1,11 +1,11 @@
 import cron from "node-cron";
-import DocCenter, {type IReminder } from "./doccenter.model";
+import Reminder, { type IReminder } from "./reminder.model";
 import { sendEmail } from "../../utils/email";
 
-export const calculateNextOccurrence = (reminder: IReminder, fromDate: Date = new Date()): Date => {
+export const calculateNextOccurrence = (reminder: Partial<IReminder>, fromDate: Date = new Date()): Date => {
   const { frequency, interval, time, startDate } = reminder;
   const [hours, minutes] = (time || "00:00").split(":").map(Number);
-  const start = startDate instanceof Date ? startDate : new Date(startDate);
+  const start = startDate instanceof Date ? startDate : new Date(startDate as any);
   
   let next = new Date(start > fromDate ? start : fromDate);
   next.setHours(hours || 0, minutes || 0, 0, 0);
@@ -61,46 +61,45 @@ export const startReminderCron = () => {
     const now = new Date();
     
     try {
-      const documents = await DocCenter.find({
-        "reminder.enabled": true
+      const reminders = await Reminder.find({
+        enabled: true
       });
 
-      for (const doc of documents) {
-        if (!doc.reminder || !doc.reminder.nextOccurrence) continue;
+      for (const reminder of reminders) {
+        if (!reminder.nextOccurrence) continue;
 
-        const threshold = getReminderThreshold(doc.reminder.frequency);
-        const triggerDate = new Date(doc.reminder.nextOccurrence);
+        const threshold = getReminderThreshold(reminder.frequency);
+        const triggerDate = new Date(reminder.nextOccurrence);
         triggerDate.setDate(triggerDate.getDate() - threshold);
 
         // Send email if:
         // 1. Current time is past the trigger date (nextOccurrence - threshold)
         // 2. AND we haven't sent an email today yet
         if (now >= triggerDate) {
-          const lastSent = doc.reminder.lastEmailSentDate;
+          const lastSent = reminder.lastEmailSentDate;
           if (!lastSent || !isSameDay(now, new Date(lastSent))) {
-            console.log(`Sending daily reminder for: ${doc.title} (Threshold: ${threshold} days)`);
+            console.log(`Sending daily reminder for: ${reminder.title} (Threshold: ${threshold} days)`);
             
             // Send Email
-            const subject = doc.reminder.subject || `Reminder: ${doc.title}`;
-            const message = doc.reminder.message || `This is a reminder for your document: ${doc.title}`;
+            const subject = reminder.subject || `Reminder: ${reminder.title}`;
+            const message = reminder.message || `This is a reminder for: ${reminder.title}`;
             const html = `
               <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
-                <h2>Reminder: ${doc.title}</h2>
+                <h2>Reminder: ${reminder.title}</h2>
                 <p>${message}</p>
-                <p><strong>Scheduled Date:</strong> ${doc.reminder.nextOccurrence.toDateString()}</p>
-                <p><strong>Document Type:</strong> ${doc.documentType}</p>
-                <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/documents" style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">View Document</a></p>
+                <p><strong>Scheduled Date:</strong> ${reminder.nextOccurrence.toDateString()}</p>
+                <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/reminders" style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">View Reminder</a></p>
                 <hr/>
                 <p style="font-size: 0.8em; color: #666;">You will receive this reminder daily until you mark it as done.</p>
               </div>
             `;
 
-            await sendEmail(doc.reminder.recipientEmails, subject, html);
+            await sendEmail(reminder.recipientEmails, subject, html);
 
             // ONLY update lastEmailSentDate. 
             // nextOccurrence is updated manually via the "Done" button/API.
-            doc.reminder.lastEmailSentDate = now;
-            await doc.save();
+            reminder.lastEmailSentDate = now;
+            await reminder.save();
           }
         }
       }

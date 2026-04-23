@@ -13,6 +13,7 @@ import assetRoutes from "./modules/assets/asset.route";
 import leaveRoutes from "./modules/leaveManagement/leave.route";
 import recruitmentRoutes from "./modules/recruitment/recruitment.route";
 import empIdRoutes from "./modules/user/employeeId.route";
+import reminderRoutes from "./modules/reminder/reminder.route";
 
 
 const app = new Hono();
@@ -75,6 +76,9 @@ app.route("/api/leave", leaveRoutes);
 
 // 🤝 recruitment routes
 app.route("/api/recruitment", recruitmentRoutes);
+
+// 🔔 reminder routes
+app.route("/api/reminder", reminderRoutes);
 
 
 

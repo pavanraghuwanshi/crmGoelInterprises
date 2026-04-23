@@ -3,7 +3,7 @@ import app from "./app";
 
 import { connectDB } from "./config/db";
 import "dotenv/config"; // 👈 important
-import { startReminderCron } from "./modules/doccenter/reminder.service";
+import { startReminderCron } from "./modules/reminder/reminder.service";
 
 // connect database
 await connectDB();
