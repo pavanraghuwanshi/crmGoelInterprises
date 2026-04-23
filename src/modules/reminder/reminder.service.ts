@@ -81,11 +81,11 @@ export const startReminderCron = () => {
             console.log(`Sending daily reminder for: ${reminder.title} (Threshold: ${threshold} days)`);
             
             // Send Email
-            const subject = reminder.subject || `Reminder: ${reminder.title}`;
-            const message = reminder.message || `This is a reminder for: ${reminder.title}`;
+            const subject = reminder.title;
+            const message = reminder.description || "This is a scheduled reminder.";
             const html = `
               <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
-                <h2>Reminder: ${reminder.title}</h2>
+                <h2>${reminder.title}</h2>
                 <p>${message}</p>
                 <p><strong>Scheduled Date:</strong> ${reminder.nextOccurrence.toDateString()}</p>
                 <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/reminders" style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">View Reminder</a></p>

@@ -11,8 +11,6 @@ export interface IReminder extends Document {
   nextOccurrence?: Date;
   lastEmailSentDate?: Date;
   recipientEmails: string[];
-  subject?: string;
-  message?: string;
   createdBy: mongoose.Schema.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -34,8 +32,6 @@ const ReminderSchema: Schema = new Schema(
     nextOccurrence: { type: Date },
     lastEmailSentDate: { type: Date },
     recipientEmails: [{ type: String, required: true }],
-    subject: { type: String },
-    message: { type: String },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
