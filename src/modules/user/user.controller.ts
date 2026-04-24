@@ -505,8 +505,12 @@ export const getUserById = async (c: Context) => {
   try {
     const id = c.req.param("id");
 
-    const user = await User.findById(id).select("-password");
-
+    const user = await User.findById(id)
+      .select("-password")
+      .populate({ path: "employeeObjId", select: "employeeId" })
+      .populate({ path: "attendancePolicyId", select: "name" })
+      .populate({ path: "payrollPolicyId", select: "name" })
+      .populate({ path: "companyId", select: "name" });
     if (!user) {
       return c.json({ message: "User not found" }, 404);
     }
