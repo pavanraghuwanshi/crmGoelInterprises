@@ -290,7 +290,7 @@ export const getAttendances = async (c: Context) => {
           : {},
         populate: {
           path: "companyId",
-          select: "companyName",
+          select: "name",
         },
       })
       .sort({ date: -1 })
