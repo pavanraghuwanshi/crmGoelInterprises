@@ -362,15 +362,13 @@ export const getAttendancesWithSummary = async (c: Context) => {
     }
 
     // ===== ALL USERS (FOR SUMMARY) =====
-    const allUsers = await User.find(baseUserFilter).select("_id name email");
+    const allUsers = await User.find(baseUserFilter) .select("_id name email companyId").populate("companyId", "companyName");
     const allUserIds = allUsers.map((u) => u._id.toString());
 
     const totalUsers = allUsers.length;
 
     // ===== FILTERED USERS (FOR DATA) =====
-    const filteredUsers = await User.find(searchFilter).select(
-      "_id name email"
-    );
+    const filteredUsers = await User.find(searchFilter).select( "_id name email companyId").populate("companyId", "companyName");;
 
     const filteredUserIds = filteredUsers.map((u) =>
       u._id.toString()
@@ -416,25 +414,40 @@ export const getAttendancesWithSummary = async (c: Context) => {
         if (attendance.status === "Present") present++;
         else if (attendance.status === "Absent") absent++;
 
-        finalAllUsers.push({
-          user,
-          attendance,
-          status: attendance.status,
-        });
+      finalAllUsers.push({
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          company: user.companyId, // populated object
+        },
+        attendance,
+        status: attendance.status,
+      });
       } else if (leaveSet.has(uid)) {
         onLeave++;
         finalAllUsers.push({
-          user,
+          user: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            company: user.companyId,
+          },
           attendance: null,
           status: "On Leave",
         });
       } else {
         notMarked++;
-        finalAllUsers.push({
-          user,
-          attendance: null,
-          status: "Not Marked",
-        });
+      finalAllUsers.push({
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          company: user.companyId, // populated company object
+        },
+        attendance: null,
+        status: "Not Marked",
+      });
       }
     }
 
