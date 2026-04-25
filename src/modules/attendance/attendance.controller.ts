@@ -270,27 +270,42 @@ export const getAttendances = async (c: Context) => {
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
 
-    // ===== BUILD FILTER =====
+    // ===== BASE FILTER =====
     const filter: any = {};
     if (status) filter.status = status;
     if (userId) filter.userId = new Types.ObjectId(userId as string);
-    if (search) {
-      filter.$or = [
-        { "userId.name": { $regex: search as string, $options: "i" } },
-        { "userId.email": { $regex: search as string, $options: "i" } },
-      ];
-    }
 
-    // ===== QUERY ATTENDANCE =====
+    // ===== QUERY =====
     const data = await Attendance.find(filter)
-      .populate("userId", "name email")
-      .sort({ date: -1 }) // latest first
+      .populate({
+        path: "userId",
+        select: "name email companyId",
+        match: search
+          ? {
+              $or: [
+                { name: { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } },
+              ],
+            }
+          : {},
+        populate: {
+          path: "companyId",
+          select: "companyName",
+        },
+      })
+      .sort({ date: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum);
 
+    // ⚠️ important: null user remove (because match fail ho sakta hai)
+    const filteredData = data.filter((item) => item.userId !== null);
+
     const total = await Attendance.countDocuments(filter);
 
-    return c.json({ data, total, page: pageNum, limit: limitNum }, 200);
+    return c.json(
+      { data: filteredData, total, page: pageNum, limit: limitNum },
+      200
+    );
   } catch (error: any) {
     console.error(error);
     return c.json({ message: error.message }, 500);
