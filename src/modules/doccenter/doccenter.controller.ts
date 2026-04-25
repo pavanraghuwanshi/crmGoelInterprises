@@ -77,6 +77,7 @@ export const getDocuments = async (c: Context) => {
     const sortBy = c.req.query("sortBy") || "createdAt";
     const sortOrder = c.req.query("sortOrder") || "desc";
     const createdBy = c.req.query("createdBy");
+    const documentType = c.req.query("documentType");
 
     const skip = (page - 1) * limit;
     
@@ -91,6 +92,10 @@ export const getDocuments = async (c: Context) => {
     
     if (createdBy) {
       filter.createdBy = createdBy;
+    }
+
+    if (documentType) {
+      filter.documentType = documentType;
     }
 
     const sort: any = {};
