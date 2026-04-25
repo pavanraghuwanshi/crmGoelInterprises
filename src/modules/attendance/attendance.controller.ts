@@ -362,13 +362,13 @@ export const getAttendancesWithSummary = async (c: Context) => {
     }
 
     // ===== ALL USERS (FOR SUMMARY) =====
-    const allUsers = await User.find(baseUserFilter) .select("_id name email companyId").populate("companyId", "companyName");
+    const allUsers = await User.find(baseUserFilter) .select("_id name email companyId").populate("companyId", "name");
     const allUserIds = allUsers.map((u) => u._id.toString());
 
     const totalUsers = allUsers.length;
 
     // ===== FILTERED USERS (FOR DATA) =====
-    const filteredUsers = await User.find(searchFilter).select( "_id name email companyId").populate("companyId", "companyName");;
+    const filteredUsers = await User.find(searchFilter).select( "_id name email companyId").populate("companyId", "name");;
 
     const filteredUserIds = filteredUsers.map((u) =>
       u._id.toString()
