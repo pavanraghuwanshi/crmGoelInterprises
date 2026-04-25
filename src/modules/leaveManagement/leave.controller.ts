@@ -11,7 +11,7 @@ export const applyLeave = async (c: Context) => {
   try {
     const body = await c.req.json();
 
-    const { userId, employeeId, fromDate, toDate, leaveType, reason } = body;
+    const { userId, employeeId, fromDate, toDate, leaveType,status , reason } = body;
 
     // ✅ validation
     if (!fromDate || !toDate || !leaveType) {
@@ -83,6 +83,7 @@ export const applyLeave = async (c: Context) => {
       totalDays,
       leaveType,
       reason,
+      status: status || "Pending", 
     });
 
     return c.json(
