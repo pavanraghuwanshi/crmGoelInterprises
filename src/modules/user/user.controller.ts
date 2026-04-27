@@ -91,6 +91,7 @@ export const register = async (c: Context) => {
       previousWorkExperience,
       interviewDate,
       competencyMet,
+      department,
       designation,
       workingHours,
       aadharNo,
@@ -254,6 +255,7 @@ export const register = async (c: Context) => {
       interviewDate,
       competencyMet,
       designation,
+      department,
       workingHours,
       aadharNo,
       pfNo,
@@ -370,6 +372,7 @@ type IUserPlain = {
   competencyMet?: boolean;
 
   designation?: string;
+  department?: string;
   workingHours?: number;
 
   aadharNo?: string;

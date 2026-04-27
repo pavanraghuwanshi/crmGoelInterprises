@@ -59,7 +59,7 @@ export interface IUser extends Document {
 
   interviewDate?: Date;
   competencyMet?: boolean;
-
+  department?: string;
   designation?: string;
   workingHours?: number;
 
@@ -188,7 +188,7 @@ const userSchema = new Schema<IUser>(
 
     interviewDate: Date,
     competencyMet: Boolean,
-
+    department: String,
     designation: String,
     workingHours: Number,
 
