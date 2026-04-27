@@ -127,13 +127,13 @@ export const register = async (c: Context) => {
       return c.json({ message: "Name is required" }, 400);
     }
 
-    if (!email?.toString().trim()) {
-      return c.json({ message: "Email is required" }, 400);
-    }
+    // if (!email?.toString().trim()) {
+    //   return c.json({ message: "Email is required" }, 400);
+    // }
 
-    if (!password?.toString().trim()) {
-      return c.json({ message: "Password is required" }, 400);
-    }
+    // if (!password?.toString().trim()) {
+    //   return c.json({ message: "Password is required" }, 400);
+    // }
 
     // ✅ Email Validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

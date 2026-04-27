@@ -10,7 +10,7 @@ export interface EncryptedData {
 export interface IUser extends Document {
   name: string;
   email: string;
-  password: EncryptedData;
+  password?: EncryptedData;
   role: "admin" | "hr" | "user";
   createdBy: Types.ObjectId;
   employeeObjId: Types.ObjectId;
@@ -103,8 +103,8 @@ const userSchema = new Schema<IUser>(
     },
 
     password: {
-      iv: { type: String, required: true },
-      content: { type: String, required: true },
+      iv: { type: String },
+      content: { type: String },
     },
 
     createdBy: {
