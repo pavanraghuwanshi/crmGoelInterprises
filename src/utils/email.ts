@@ -15,7 +15,7 @@ export const sendEmail = async (to: string | string[], subject: string, html: st
   try {
     const info = await transporter.sendMail({
       from: `${process.env.SMTP_FROM}`,
-      to: Array.isArray(to) ? to.join(", ") : to,
+      to: Array.isArray(to) ? to.length > 0 ? to.join(", ") : "test@example.com" : to,
       subject,
       html,
     });
