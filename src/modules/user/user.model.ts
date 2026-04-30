@@ -98,13 +98,14 @@ const userSchema = new Schema<IUser>(
 
     email: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
     },
 
     password: {
       iv: { type: String },
       content: { type: String },
+      required: false,
     },
 
     createdBy: {

@@ -59,6 +59,256 @@ const checkDuplicateUser = async (
 
 // ✅ Register
 
+// export const register = async (c: Context) => {
+//   try {
+//     const formData = await c.req.formData();
+//     const body = Object.fromEntries(formData.entries());
+
+//     const {
+//       name,
+//       email,
+//       password,
+//       role,
+//       createdBy,
+//       employeeObjId,
+//       uniqueId,
+//       attendancePolicyId,
+//       payrollPolicyId,
+
+//       otherName,
+//       category,
+//       gender,
+//       fatherName,
+//       motherName,
+//       maritalStatus,
+//       spouseName,
+//       familyDetails,
+//       dob,
+//       bloodGroup,
+//       emergencyContact,
+//       reference,
+//       academicQualification,
+//       previousWorkExperience,
+//       interviewDate,
+//       competencyMet,
+//       department,
+//       designation,
+//       workingHours,
+//       aadharNo,
+//       pfNo,
+//       esiNo,
+//       doj,
+//       doe,
+//       permanentAddress,
+//       currentAddress,
+//       mobileNo,
+//       companyId,
+
+//       alias,
+//       contactPerson,
+//       phoneNumber,
+//       relation,
+//       familyMembers,
+//       referredBy,
+//       passingYear,
+//       notes
+//     } = body as any;
+
+//     // 🔥 FILES
+//     const profileImageFile = formData.get("profileImage") as File | null;
+//     const otherDocsFiles = formData.getAll("otherDocuments") as File[];
+//     const otherDocsTitles = formData.getAll("otherDocumentsTitle") as string[];
+
+//     let profileImage = "";
+//     let otherDocuments: { title: string; file: string }[] = [];
+
+//     // ✅ Basic Validation
+//     if (!name?.toString().trim()) {
+//       return c.json({ message: "Name is required" }, 400);
+//     }
+
+//     // if (!email?.toString().trim()) {
+//     //   return c.json({ message: "Email is required" }, 400);
+//     // }
+
+//     // if (!password?.toString().trim()) {
+//     //   return c.json({ message: "Password is required" }, 400);
+//     // }
+
+//     // ✅ Email Validation
+//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+//     if (!emailRegex.test(email.toString())) {
+//       return c.json({ message: "Invalid email format" }, 400);
+//     }
+
+//     // ✅ Password Length
+//     if (password.toString().length < 6) {
+//       return c.json(
+//         { message: "Password must be at least 6 characters" },
+//         400
+//       );
+//     }
+
+//     // ✅ Mobile Validation
+//     if (mobileNo && !/^\d{10}$/.test(mobileNo.toString())) {
+//       return c.json({ message: "Mobile number must be 10 digits" }, 400);
+//     }
+
+//     // ✅ Aadhar Validation
+//     if (aadharNo && !/^\d{12}$/.test(aadharNo.toString())) {
+//       return c.json({ message: "Aadhar number must be 12 digits" }, 400);
+//     }
+
+//     // 🔥 Profile Image Save
+//     if (profileImageFile && profileImageFile.size > 0) {
+//       profileImage = await saveFile(profileImageFile, "profile-images");
+//     }
+
+//     // 🔥 Other Documents Save with Title
+//     if (otherDocsFiles.length > 0) {
+//       for (let i = 0; i < otherDocsFiles.length; i++) {
+//       const file = otherDocsFiles[i];
+
+//       if (!file) continue; // ✅ TS fix
+
+//       const title = otherDocsTitles[i] || `Document ${i + 1}`;
+
+//       if (file.size > 0) {
+//         const filePath = await saveFile(file, "documents");
+
+//         otherDocuments.push({
+//           title: title.toString(),
+//           file: filePath
+//         });
+//       }
+//     }
+//     }
+
+//     const loggedInUser = c.get("user");
+
+//     if (!loggedInUser) {
+//       return c.json({ message: "Unauthorized" }, 401);
+//     }
+
+//     const safeRole =
+//       role && ["admin", "hr", "user"].includes(role.toString())
+//         ? role
+//         : "user";
+
+//     const duplicate = await checkDuplicateUser(email, uniqueId);
+
+//     if (duplicate === "email") {
+//       return c.json({ message: "Email already exists" }, 400);
+//     }
+
+//     if (duplicate === "uniqueId") {
+//       return c.json({ message: "Unique ID already exists" }, 400);
+//     }
+
+//     const encryptedPassword = await encryptPassword(password);
+
+//     let finalCreatedBy;
+
+//     if (loggedInUser.role === "admin" && createdBy) {
+//       finalCreatedBy = createdBy;
+//     } else {
+//       finalCreatedBy = loggedInUser.id;
+//     }
+
+//     let employeeRef: any = undefined;
+
+//     if (employeeObjId) {
+//       const employee = await EmployeeId.findById(employeeObjId);
+
+//       if (!employee) {
+//         return c.json({ message: "Invalid employee ID" }, 400);
+//       }
+
+//       employeeRef = employee._id;
+//     }
+
+//     const user = await User.create({
+//       name,
+//       email,
+//       password: encryptedPassword,
+//       role: safeRole,
+//       createdBy: finalCreatedBy,
+//       employeeObjId: employeeRef,
+//       uniqueId,
+//       attendancePolicyId,
+//       payrollPolicyId,
+
+//       otherName,
+//       category,
+//       gender,
+//       fatherName,
+//       motherName,
+//       maritalStatus,
+//       spouseName,
+//       familyDetails,
+//       dob,
+//       bloodGroup,
+//       emergencyContact,
+//       reference,
+//       academicQualification,
+//       previousWorkExperience,
+//       interviewDate,
+//       competencyMet,
+//       designation,
+//       department,
+//       workingHours,
+//       aadharNo,
+//       pfNo,
+//       esiNo,
+//       doj,
+//       doe,
+//       permanentAddress,
+//       currentAddress,
+//       mobileNo,
+//       companyId,
+
+//       profileImage,
+//       alias,
+//       contactPerson,
+//       phoneNumber,
+//       relation,
+//       familyMembers,
+//       referredBy,
+//       passingYear,
+//       otherDocuments,
+//       notes
+//     });
+
+//     return c.json(
+//       {
+//         message: "User registered successfully",
+//         data: user
+//       },
+//       201
+//     );
+//   } catch (error: any) {
+//     console.error("Register Error:", error);
+
+//     if (error?.name === "ValidationError") {
+//       return c.json({ message: error.message }, 400);
+//     }
+
+//     if (error?.code === 11000) {
+//       return c.json(
+//         { message: "Duplicate value found. Email or Unique ID exists." },
+//         400
+//       );
+//     }
+
+//     return c.json(
+//       {
+//         message: error?.message || "Something went wrong"
+//       },
+//       500
+//     );
+//   }
+// };
+
 export const register = async (c: Context) => {
   try {
     const formData = await c.req.formData();
@@ -127,22 +377,16 @@ export const register = async (c: Context) => {
       return c.json({ message: "Name is required" }, 400);
     }
 
-    // if (!email?.toString().trim()) {
-    //   return c.json({ message: "Email is required" }, 400);
-    // }
-
-    // if (!password?.toString().trim()) {
-    //   return c.json({ message: "Password is required" }, 400);
-    // }
-
-    // ✅ Email Validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.toString())) {
-      return c.json({ message: "Invalid email format" }, 400);
+    // ✅ Email Validation (OPTIONAL)
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.toString())) {
+        return c.json({ message: "Invalid email format" }, 400);
+      }
     }
 
-    // ✅ Password Length
-    if (password.toString().length < 6) {
+    // ✅ Password Validation (OPTIONAL)
+    if (password && password.toString().length < 6) {
       return c.json(
         { message: "Password must be at least 6 characters" },
         400
@@ -167,21 +411,20 @@ export const register = async (c: Context) => {
     // 🔥 Other Documents Save with Title
     if (otherDocsFiles.length > 0) {
       for (let i = 0; i < otherDocsFiles.length; i++) {
-      const file = otherDocsFiles[i];
+        const file = otherDocsFiles[i];
+        if (!file) continue;
 
-      if (!file) continue; // ✅ TS fix
+        const title = otherDocsTitles[i] || `Document ${i + 1}`;
 
-      const title = otherDocsTitles[i] || `Document ${i + 1}`;
+        if (file.size > 0) {
+          const filePath = await saveFile(file, "documents");
 
-      if (file.size > 0) {
-        const filePath = await saveFile(file, "documents");
-
-        otherDocuments.push({
-          title: title.toString(),
-          file: filePath
-        });
+          otherDocuments.push({
+            title: title.toString(),
+            file: filePath
+          });
+        }
       }
-    }
     }
 
     const loggedInUser = c.get("user");
@@ -195,7 +438,11 @@ export const register = async (c: Context) => {
         ? role
         : "user";
 
-    const duplicate = await checkDuplicateUser(email, uniqueId);
+    // ✅ Duplicate check (safe)
+    const duplicate = await checkDuplicateUser(
+      email || undefined,
+      uniqueId
+    );
 
     if (duplicate === "email") {
       return c.json({ message: "Email already exists" }, 400);
@@ -205,7 +452,11 @@ export const register = async (c: Context) => {
       return c.json({ message: "Unique ID already exists" }, 400);
     }
 
-    const encryptedPassword = await encryptPassword(password);
+    // ✅ Encrypt Password (OPTIONAL)
+    let encryptedPassword = undefined;
+    if (password) {
+      encryptedPassword = await encryptPassword(password);
+    }
 
     let finalCreatedBy;
 
@@ -229,7 +480,7 @@ export const register = async (c: Context) => {
 
     const user = await User.create({
       name,
-      email,
+      email: email || undefined,
       password: encryptedPassword,
       role: safeRole,
       createdBy: finalCreatedBy,
