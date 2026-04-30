@@ -99,13 +99,12 @@ const userSchema = new Schema<IUser>(
     email: {
       type: String,
       required: false,
-      unique: true,
-    },
+      sparse: true, // ✅ add this
+      },
 
     password: {
       iv: { type: String },
       content: { type: String },
-      required: false,
     },
 
     createdBy: {
