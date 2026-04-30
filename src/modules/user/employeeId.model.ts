@@ -17,7 +17,6 @@ const employeeIdSchema = new Schema<IEmployeeId>(
     prefix:{
       type:String,
       require:true,
-      unique:true
     },
     remark: {
       type: String,
