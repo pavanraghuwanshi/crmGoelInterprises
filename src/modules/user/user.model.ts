@@ -100,6 +100,7 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: false,
       sparse: true, // ✅ add this
+       unique: true,   // ✅ add this
       },
 
     password: {
