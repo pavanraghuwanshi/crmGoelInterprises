@@ -75,3 +75,36 @@ export const authorizeRoles = (roles: JwtPayload["role"][]) => {
     }
   };
 };
+
+
+
+
+// export const checkPermission = (moduleName: string) => {
+//   return async (c: Context, next: any) => {
+//     const user = c.get("user");
+
+//     if (!user) {
+//       return c.json({ message: "Unauthorized" }, 401);
+//     }
+
+//     // Admin bypass
+//     if (user.role === "admin") {
+//       return next();
+//     }
+
+//     // HR check
+//     if (user.role === "hr") {
+//       const permission = await ModulePermission.findOne({
+//         userId: user.id
+//       });
+
+//       const hasAccess = permission?.permissions?.get(moduleName);
+
+//       if (!hasAccess) {
+//         return c.json({ message: `No access to ${moduleName}` }, 403);
+//       }
+//     }
+
+//     return next();
+//   };
+// };
