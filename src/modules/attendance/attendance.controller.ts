@@ -707,7 +707,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
 };
  
 
-//  ====== Update Attendance Status Of User
+//  ====== Update Attendance Status Of Single User
 
 export const updateAttendanceStatus = async (c: Context) => {
   try {
@@ -750,6 +750,59 @@ export const updateAttendanceStatus = async (c: Context) => {
       success: true,
       message: "Status updated successfully",
       data: attendance,
+    });
+  } catch (error: any) {
+    console.error(error);
+    return c.json({ message: error.message }, 500);
+  }
+};
+
+
+//  ====== Update Attendance Status Of Multiple User
+export const updateMultipleAttendanceStatus = async (c: Context) => {
+  try {
+    const { attendances } = await c.req.json();
+
+    if (!attendances || !Array.isArray(attendances)) {
+      return c.json({ message: "attendances array required" }, 400);
+    }
+
+    const operations = attendances.map((item: any) => {
+      const { userId, date, status } = item;
+
+      let updateData: any = { status };
+
+      if (status === "Absent") {
+        updateData = {
+          ...updateData,
+          punchIn: null,
+          punchOut: null,
+          totalWorkedMinutes: 0,
+          overtimeHours: 0,
+          overtimePay: 0,
+        };
+      }
+
+      if (status === "Half-Day") {
+        updateData.totalWorkedMinutes = 240;
+      }
+
+      return {
+        updateOne: {
+          filter: {
+            userId,
+            date: new Date(date),
+          },
+          update: { $set: updateData },
+        },
+      };
+    });
+
+    await Attendance.bulkWrite(operations);
+
+    return c.json({
+      success: true,
+      message: "Bulk attendance updated successfully",
     });
   } catch (error: any) {
     console.error(error);

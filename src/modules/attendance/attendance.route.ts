@@ -7,6 +7,7 @@ import {
   getAttendances,
   getUserMonthlyAttendance,
   updateAttendancePolicy,
+  updateMultipleAttendanceStatus,
   deleteAttendancePolicy,
   updateAttendanceStatus,
   getManualAttendancePendingUsers,
@@ -49,6 +50,10 @@ attendanceRoutes.get("/get-user-to-mark-manual-attendance", getManualAttendanceP
 
 // update attendance Status
 attendanceRoutes.put("/update", updateAttendanceStatus);
+
+
+// update attendance Status of multiple user
+attendanceRoutes.put("/update/multiple", updateMultipleAttendanceStatus);
 
 // update attendance manually
 attendanceRoutes.put("/mark-manual-attendance", manualMarkAttendance);
