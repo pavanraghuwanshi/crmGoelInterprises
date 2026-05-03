@@ -763,7 +763,7 @@ export const updateMultipleAttendanceStatus = async (c: Context) => {
   try {
     const body = await c.req.json();
 
-    const { userIds, date, status } = body;
+    const { userIds, date, status, } = body;
 
     if (!userIds || !Array.isArray(userIds) || !date || !status) {
       return c.json({ message: "userIds, date, status required" }, 400);

@@ -15,6 +15,7 @@ import recruitmentRoutes from "./modules/recruitment/recruitment.route";
 import empIdRoutes from "./modules/user/employeeId.route";
 import reminderRoutes from "./modules/reminder/reminder.route";
 import modulePermissionRoutes from "./modules/AssignedPermission/permission.route";
+import deptDesgRoutes from "./modules/Designation_And_Department/Designation_And_Department.route";
 
 
 const app = new Hono();
@@ -69,6 +70,12 @@ app.route("/api/doccenter", docCenterRoutes);
 app.route("/api/roster", rosterRoute);
 
 app.route("/api/company", companyRoute);
+
+
+
+app.route("/api/org", deptDesgRoutes);
+
+
 //  Asset routes
 app.route("/api/assets", assetRoutes);
 
