@@ -1214,76 +1214,76 @@ export const getTodayAttendanceSummary = async (c: Context) => {
       end.setHours(23, 59, 59, 999);
     }
 
-    // ===== USER FILTER (REMOVE ADMIN + OPTIONAL ACTIVE USERS) =====
+    // ===== USER FILTER =====
     const userFilter: any = {
       role: { $ne: "admin" },
-      // isActive: true, // agar field hai to enable kar
     };
 
-    // ===== TOTAL USERS =====
+    // ===== ALL USERS =====
     const users = await User.find(userFilter).select("_id");
     const totalUsers = users.length;
-    const validUserIds = new Set(users.map((u) => u._id.toString()));
 
-    // ===== ATTENDANCE IN RANGE =====
+    const userIds = users.map((u) => u._id.toString());
+
+    // ===== ATTENDANCE =====
     const attendanceData = await Attendance.find({
+      userId: { $in: userIds },
       date: { $gte: start, $lte: end },
-      userId: { $in: [...validUserIds] }, // only valid users
     });
 
-    // ===== PRESENT & ABSENT (UNIQUE USERS) =====
-    const presentUsers = new Set<string>();
-    const absentUsers = new Set<string>();
+    const attendanceMap = new Map();
 
     attendanceData.forEach((a) => {
-      const userId = a.userId.toString();
-
-      if (a.status === "Present") {
-        presentUsers.add(userId);
-      } else if (a.status === "Absent") {
-        absentUsers.add(userId);
-      }
+      attendanceMap.set(a.userId.toString(), a);
     });
 
-    // ===== LEAVES IN RANGE =====
+    // ===== LEAVES =====
     const leaveData = await Leave.find({
+      userId: { $in: userIds },
+      status: "Approved",
       fromDate: { $lte: end },
       toDate: { $gte: start },
-      userId: { $in: [...validUserIds] },
     });
 
-    const leaveUsers = new Set(
+    const leaveSet = new Set(
       leaveData.map((l) => l.userId.toString())
     );
 
-    // ===== REMOVE OVERLAP (LEAVE > PRESENT > ABSENT) =====
-    leaveUsers.forEach((id) => {
-      presentUsers.delete(id);
-      absentUsers.delete(id);
-    });
+    // ===== FINAL COUNT =====
+    let present = 0;
+    let absent = 0;
+    let onLeave = 0;
+    let notMarked = 0;
 
-    // ===== FINAL COUNTS =====
-    const presentCount = presentUsers.size;
-    const absentCount = absentUsers.size;
-    const leaveCount = leaveUsers.size;
+    for (const user of users) {
+      const uid = user._id.toString();
+      const attendance = attendanceMap.get(uid);
 
-    const markedUsers = new Set([
-      ...presentUsers,
-      ...absentUsers,
-      ...leaveUsers,
-    ]);
+      if (attendance) {
+        const hasPunchIn = !!attendance.punchIn;
+        const hasPunchOut = !!attendance.punchOut;
 
-    const notMarkedCount = totalUsers - markedUsers.size;
+        if (hasPunchIn && hasPunchOut) {
+          present++;
+        } else {
+          notMarked++;
+        }
+      } else if (leaveSet.has(uid)) {
+        onLeave++;
+      } else {
+        absent++;
+      }
+    }
 
     return c.json(
       {
         startDate: start,
         endDate: end,
         totalUsers,
-        present: presentCount,
-        absent: absentCount,
-        onLeave: leaveCount,
-        notMarked: notMarkedCount,
+        present,
+        absent,
+        onLeave,
+        notMarked,
       },
       200
     );
