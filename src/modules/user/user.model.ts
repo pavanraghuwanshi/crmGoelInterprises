@@ -89,6 +89,14 @@ export interface IUser extends Document {
       file?: string;
     }[];
   notes?: string;
+  designationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Designation"
+    },
+  departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department"
+    }
 }
 
 // 📦 Schema
@@ -226,6 +234,14 @@ const userSchema = new Schema<IUser>(
     }
   ],
   notes: { type: String },
+  designationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Designation"
+    },
+  departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department"
+    }
   },
   { timestamps: true }
 );

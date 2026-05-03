@@ -344,6 +344,8 @@ export const register = async (c: Context) => {
       competencyMet,
       department,
       designation,
+      designationId,
+      departmentId,
       workingHours,
       aadharNo,
       pfNo,
@@ -528,7 +530,9 @@ export const register = async (c: Context) => {
       referredBy,
       passingYear,
       otherDocuments,
-      notes
+      notes,
+      designationId,
+      departmentId,
     });
 
     return c.json(
@@ -707,6 +711,8 @@ export const getUsers = async (c: Context) => {
       .populate("attendancePolicyId", "name")
       .populate("employeeObjId", "employeeId")
       .populate("companyId", "name")
+      .populate("designationId", "name")
+      .populate("departmentId", "name")
       .skip(skip)
       .limit(limit)
       .lean<IUserPlain[]>(); // ✅ array type
@@ -765,7 +771,9 @@ export const getUserById = async (c: Context) => {
       .populate({ path: "employeeObjId", select: "employeeId" })
       .populate({ path: "attendancePolicyId", select: "name" })
       .populate({ path: "payrollPolicyId", select: "name" })
-      .populate({ path: "companyId", select: "name" });
+      .populate({ path: "companyId", select: "name" })
+      .populate({ path: "designationId", select: "name" })
+      .populate({ path: "departmentId", select: "name" });
     if (!user) {
       return c.json({ message: "User not found" }, 404);
     }
@@ -1321,6 +1329,13 @@ export const login = async (c: Context) => {
     );
   }
 
+  if (!user.password) {
+  return c.json(
+    { message: "Password not set for this user" },
+    400
+  );
+}
+
   const decryptedPassword = decryptPassword(user.password);
 
   const isMatch = password === decryptedPassword;
@@ -1383,7 +1398,7 @@ export const restoreUser = async (c: Context) => {
       return c.json({ message: "Deleted user not found" }, 404);
     }
 
-    await User.create(user.toObject());
+    // await User.create(user.toObject());
     await DeletedUser.findByIdAndDelete(id);
 
     return c.json({ message: "User restored successfully" }, 200);
