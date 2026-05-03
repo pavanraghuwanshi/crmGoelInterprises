@@ -761,48 +761,44 @@ export const updateAttendanceStatus = async (c: Context) => {
 //  ====== Update Attendance Status Of Multiple User
 export const updateMultipleAttendanceStatus = async (c: Context) => {
   try {
-    const { attendances } = await c.req.json();
+    const body = await c.req.json();
 
-    if (!attendances || !Array.isArray(attendances)) {
-      return c.json({ message: "attendances array required" }, 400);
+    const { userIds, date, status } = body;
+
+    if (!userIds || !Array.isArray(userIds) || !date || !status) {
+      return c.json({ message: "userIds, date, status required" }, 400);
     }
 
-    const operations = attendances.map((item: any) => {
-      const { userId, date, status } = item;
+    // ✅ prepare update data (same logic as yours)
+    const updateData: any = {
+      status,
+    };
 
-      let updateData: any = { status };
+    if (status === "Absent") {
+      updateData.punchIn = null;
+      updateData.punchOut = null;
+      updateData.totalWorkedMinutes = 0;
+      updateData.overtimeHours = 0;
+      updateData.overtimePay = 0;
+    }
 
-      if (status === "Absent") {
-        updateData = {
-          ...updateData,
-          punchIn: null,
-          punchOut: null,
-          totalWorkedMinutes: 0,
-          overtimeHours: 0,
-          overtimePay: 0,
-        };
-      }
+    if (status === "Half-Day") {
+      updateData.totalWorkedMinutes = 240;
+    }
 
-      if (status === "Half-Day") {
-        updateData.totalWorkedMinutes = 240;
-      }
-
-      return {
-        updateOne: {
-          filter: {
-            userId,
-            date: new Date(date),
-          },
-          update: { $set: updateData },
-        },
-      };
-    });
-
-    await Attendance.bulkWrite(operations);
+    // ✅ same date logic (no change)
+    const result = await Attendance.updateMany(
+      {
+        userId: { $in: userIds },
+        date: new Date(date),
+      },
+      { $set: updateData }
+    );
 
     return c.json({
       success: true,
-      message: "Bulk attendance updated successfully",
+      message: "Status updated successfully",
+      modifiedCount: result.modifiedCount,
     });
   } catch (error: any) {
     console.error(error);
