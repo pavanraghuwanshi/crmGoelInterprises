@@ -658,6 +658,8 @@ export const getUsers = async (c: Context) => {
     const search = c.req.query("search") || "";
     const companyId = c.req.query("companyId");
     const gender = c.req.query("gender");
+    const designationId = c.req.query("designationId");
+    const departmentId = c.req.query("departmentId");
 
     const skip = (page - 1) * limit;
 
@@ -669,6 +671,16 @@ export const getUsers = async (c: Context) => {
     // ✅ company filter
     if (companyId && mongoose.Types.ObjectId.isValid(companyId)) {
       filter.companyId = new mongoose.Types.ObjectId(companyId);
+    }
+
+    // ✅ designation filter
+    if (designationId && mongoose.Types.ObjectId.isValid(designationId)) {
+      filter.designationId = new mongoose.Types.ObjectId(designationId);
+    }
+
+    // ✅ department filter
+    if (departmentId && mongoose.Types.ObjectId.isValid(departmentId)) {
+      filter.departmentId = new mongoose.Types.ObjectId(departmentId);
     }
 
     if (gender) {
