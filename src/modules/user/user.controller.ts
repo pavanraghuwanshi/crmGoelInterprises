@@ -7,6 +7,7 @@ import { decryptPassword, encryptPassword } from "../../utils/crypto.ts";
 import mongoose, { Types } from "mongoose";
 import { EmployeeId } from "./employeeId.model.ts";
 import { saveFile } from "../../utils/saveFile.ts";
+import { DeletedUser } from "./deleteUser.model.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -974,18 +975,45 @@ export const updateUser = async (c: Context) => {
 
 
 // ---------------- DELETE USER ----------------
+// export const deleteUser = async (c: Context) => {
+//   try {
+//     const id = c.req.param("id");
+
+//     const user = await User.findByIdAndDelete(id);
+
+//     if (!user) {
+//       return c.json({ message: "User not found" }, 404);
+//     }
+
+//     return c.json(
+//       { message: "User deleted successfully" },
+//       200
+//     );
+//   } catch (error) {
+//     console.error("Delete Error:", error);
+//     return c.json({ message: "Invalid User ID" }, 400);
+//   }
+// };
+
+
 export const deleteUser = async (c: Context) => {
   try {
     const id = c.req.param("id");
-
-    const user = await User.findByIdAndDelete(id);
+    
+    const user = await User.findById(id);
 
     if (!user) {
       return c.json({ message: "User not found" }, 404);
     }
 
+    // 👉 Save into DeletedUser collection
+    await DeletedUser.create(user.toObject());
+
+    // 👉 Delete from main collection
+    await User.findByIdAndDelete(id);
+
     return c.json(
-      { message: "User deleted successfully" },
+      { message: "User moved to deleted users successfully" },
       200
     );
   } catch (error) {
@@ -1321,4 +1349,45 @@ export const login = async (c: Context) => {
       role: user.role,
     },
   });
+};
+
+
+
+// get deleted user for view
+
+export const getDeletedUsers = async (c: Context) => {
+  try {
+    const users = await DeletedUser.find()
+      .populate("createdBy")
+      .populate("employeeObjId")
+      .populate("attendancePolicyId")
+      .populate("payrollPolicyId")
+      .populate("companyId");
+
+    return c.json(users, 200);
+  } catch (error) {
+    console.error("Fetch Deleted Users Error:", error);
+    return c.json({ message: "Something went wrong" }, 500);
+  }
+};
+
+
+//  not in use  restore user api
+export const restoreUser = async (c: Context) => {
+  try {
+    const id = c.req.param("id");
+
+    const user = await DeletedUser.findById(id);
+
+    if (!user) {
+      return c.json({ message: "Deleted user not found" }, 404);
+    }
+
+    await User.create(user.toObject());
+    await DeletedUser.findByIdAndDelete(id);
+
+    return c.json({ message: "User restored successfully" }, 200);
+  } catch (error) {
+    return c.json({ message: "Error restoring user" }, 500);
+  }
 };
