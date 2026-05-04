@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import * as XLSX from "xlsx";
 import { User } from "../../modules/user/user.model.ts";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "../auth/auth.type.ts";
@@ -59,256 +60,6 @@ const checkDuplicateUser = async (
 
 
 // ✅ Register
-
-// export const register = async (c: Context) => {
-//   try {
-//     const formData = await c.req.formData();
-//     const body = Object.fromEntries(formData.entries());
-
-//     const {
-//       name,
-//       email,
-//       password,
-//       role,
-//       createdBy,
-//       employeeObjId,
-//       uniqueId,
-//       attendancePolicyId,
-//       payrollPolicyId,
-
-//       otherName,
-//       category,
-//       gender,
-//       fatherName,
-//       motherName,
-//       maritalStatus,
-//       spouseName,
-//       familyDetails,
-//       dob,
-//       bloodGroup,
-//       emergencyContact,
-//       reference,
-//       academicQualification,
-//       previousWorkExperience,
-//       interviewDate,
-//       competencyMet,
-//       department,
-//       designation,
-//       workingHours,
-//       aadharNo,
-//       pfNo,
-//       esiNo,
-//       doj,
-//       doe,
-//       permanentAddress,
-//       currentAddress,
-//       mobileNo,
-//       companyId,
-
-//       alias,
-//       contactPerson,
-//       phoneNumber,
-//       relation,
-//       familyMembers,
-//       referredBy,
-//       passingYear,
-//       notes
-//     } = body as any;
-
-//     // 🔥 FILES
-//     const profileImageFile = formData.get("profileImage") as File | null;
-//     const otherDocsFiles = formData.getAll("otherDocuments") as File[];
-//     const otherDocsTitles = formData.getAll("otherDocumentsTitle") as string[];
-
-//     let profileImage = "";
-//     let otherDocuments: { title: string; file: string }[] = [];
-
-//     // ✅ Basic Validation
-//     if (!name?.toString().trim()) {
-//       return c.json({ message: "Name is required" }, 400);
-//     }
-
-//     // if (!email?.toString().trim()) {
-//     //   return c.json({ message: "Email is required" }, 400);
-//     // }
-
-//     // if (!password?.toString().trim()) {
-//     //   return c.json({ message: "Password is required" }, 400);
-//     // }
-
-//     // ✅ Email Validation
-//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//     if (!emailRegex.test(email.toString())) {
-//       return c.json({ message: "Invalid email format" }, 400);
-//     }
-
-//     // ✅ Password Length
-//     if (password.toString().length < 6) {
-//       return c.json(
-//         { message: "Password must be at least 6 characters" },
-//         400
-//       );
-//     }
-
-//     // ✅ Mobile Validation
-//     if (mobileNo && !/^\d{10}$/.test(mobileNo.toString())) {
-//       return c.json({ message: "Mobile number must be 10 digits" }, 400);
-//     }
-
-//     // ✅ Aadhar Validation
-//     if (aadharNo && !/^\d{12}$/.test(aadharNo.toString())) {
-//       return c.json({ message: "Aadhar number must be 12 digits" }, 400);
-//     }
-
-//     // 🔥 Profile Image Save
-//     if (profileImageFile && profileImageFile.size > 0) {
-//       profileImage = await saveFile(profileImageFile, "profile-images");
-//     }
-
-//     // 🔥 Other Documents Save with Title
-//     if (otherDocsFiles.length > 0) {
-//       for (let i = 0; i < otherDocsFiles.length; i++) {
-//       const file = otherDocsFiles[i];
-
-//       if (!file) continue; // ✅ TS fix
-
-//       const title = otherDocsTitles[i] || `Document ${i + 1}`;
-
-//       if (file.size > 0) {
-//         const filePath = await saveFile(file, "documents");
-
-//         otherDocuments.push({
-//           title: title.toString(),
-//           file: filePath
-//         });
-//       }
-//     }
-//     }
-
-//     const loggedInUser = c.get("user");
-
-//     if (!loggedInUser) {
-//       return c.json({ message: "Unauthorized" }, 401);
-//     }
-
-//     const safeRole =
-//       role && ["admin", "hr", "user"].includes(role.toString())
-//         ? role
-//         : "user";
-
-//     const duplicate = await checkDuplicateUser(email, uniqueId);
-
-//     if (duplicate === "email") {
-//       return c.json({ message: "Email already exists" }, 400);
-//     }
-
-//     if (duplicate === "uniqueId") {
-//       return c.json({ message: "Unique ID already exists" }, 400);
-//     }
-
-//     const encryptedPassword = await encryptPassword(password);
-
-//     let finalCreatedBy;
-
-//     if (loggedInUser.role === "admin" && createdBy) {
-//       finalCreatedBy = createdBy;
-//     } else {
-//       finalCreatedBy = loggedInUser.id;
-//     }
-
-//     let employeeRef: any = undefined;
-
-//     if (employeeObjId) {
-//       const employee = await EmployeeId.findById(employeeObjId);
-
-//       if (!employee) {
-//         return c.json({ message: "Invalid employee ID" }, 400);
-//       }
-
-//       employeeRef = employee._id;
-//     }
-
-//     const user = await User.create({
-//       name,
-//       email,
-//       password: encryptedPassword,
-//       role: safeRole,
-//       createdBy: finalCreatedBy,
-//       employeeObjId: employeeRef,
-//       uniqueId,
-//       attendancePolicyId,
-//       payrollPolicyId,
-
-//       otherName,
-//       category,
-//       gender,
-//       fatherName,
-//       motherName,
-//       maritalStatus,
-//       spouseName,
-//       familyDetails,
-//       dob,
-//       bloodGroup,
-//       emergencyContact,
-//       reference,
-//       academicQualification,
-//       previousWorkExperience,
-//       interviewDate,
-//       competencyMet,
-//       designation,
-//       department,
-//       workingHours,
-//       aadharNo,
-//       pfNo,
-//       esiNo,
-//       doj,
-//       doe,
-//       permanentAddress,
-//       currentAddress,
-//       mobileNo,
-//       companyId,
-
-//       profileImage,
-//       alias,
-//       contactPerson,
-//       phoneNumber,
-//       relation,
-//       familyMembers,
-//       referredBy,
-//       passingYear,
-//       otherDocuments,
-//       notes
-//     });
-
-//     return c.json(
-//       {
-//         message: "User registered successfully",
-//         data: user
-//       },
-//       201
-//     );
-//   } catch (error: any) {
-//     console.error("Register Error:", error);
-
-//     if (error?.name === "ValidationError") {
-//       return c.json({ message: error.message }, 400);
-//     }
-
-//     if (error?.code === 11000) {
-//       return c.json(
-//         { message: "Duplicate value found. Email or Unique ID exists." },
-//         400
-//       );
-//     }
-
-//     return c.json(
-//       {
-//         message: error?.message || "Something went wrong"
-//       },
-//       500
-//     );
-//   }
-// };
 
 export const register = async (c: Context) => {
   try {
@@ -1416,5 +1167,151 @@ export const restoreUser = async (c: Context) => {
     return c.json({ message: "User restored successfully" }, 200);
   } catch (error) {
     return c.json({ message: "Error restoring user" }, 500);
+  }
+};
+
+
+
+
+
+
+
+//  bulk upload users from excel (not implemented yet, just a placeholder)
+
+
+export const bulkRegister = async (c: Context) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get("file") as File;
+
+    if (!file) {
+      return c.json({ message: "Excel file is required" }, 400);
+    }
+
+    // ✅ Convert file → buffer
+    let workbook;
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      workbook = XLSX.read(arrayBuffer, { type: "buffer" });
+    } catch (err) {
+      return c.json(
+        { message: "Invalid or unsupported file format" },
+        400
+      );
+      
+    }
+
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+      return c.json(
+        { message: "Excel file has no sheets" },
+        400
+      );
+    }
+
+    const sheetName = workbook.SheetNames[0];
+
+    if (!sheetName) {
+      return c.json({ message: "No sheet found in Excel file" }, 400);
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+
+    if (!sheet) {
+      return c.json({ message: "Sheet data not found" }, 400);
+    }        
+
+    // ✅ Excel → JSON
+    const usersData = XLSX.utils.sheet_to_json(sheet);
+
+    if (!usersData.length) {
+      return c.json({ message: "Excel is empty" }, 400);
+    }
+
+    const createdUsers = [];
+    const errors = [];
+
+    const loggedInUser = c.get("user");
+
+    for (let i = 0; i < usersData.length; i++) {
+      const row: any = usersData[i];
+
+      try {
+        // 🔥 Required fields
+        if (!row.name) {
+          throw new Error("Name is required");
+        }
+
+        // ✅ Optional validations
+        if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
+          throw new Error("Invalid email");
+        }
+
+        if (row.mobileNo && !/^\d{10}$/.test(row.mobileNo)) {
+          throw new Error("Invalid mobile");
+        }
+
+        // ✅ Duplicate check
+        const duplicate = await checkDuplicateUser(
+          row.email || undefined,
+          row.uniqueId
+        );
+
+        if (duplicate) {
+          throw new Error(`Duplicate ${duplicate}`);
+        }
+
+        // ✅ Password encrypt (optional)
+        let encryptedPassword;
+        if (row.password) {
+          encryptedPassword = await encryptPassword(row.password);
+        }
+
+        // ✅ ObjectId safe handling (OPTIONAL)
+        const safeObjectId = (val: any) =>
+          val && val !== "" ? val : undefined;
+
+        const user = await User.create({
+          name: row.name,
+          email: row.email || undefined,
+          password: encryptedPassword,
+          role: row.role || "user",
+          createdBy: loggedInUser.id,
+
+          uniqueId: row.uniqueId,
+
+          // 🔥 Optional ObjectIds
+          companyId: safeObjectId(row.companyId),
+          designationId: safeObjectId(row.designationId),
+          departmentId: safeObjectId(row.departmentId),
+          attendancePolicyId: safeObjectId(row.attendancePolicyId),
+          payrollPolicyId: safeObjectId(row.payrollPolicyId),
+
+          // Other fields
+          mobileNo: row.mobileNo,
+          gender: row.gender,
+          dob: row.dob,
+          doj: row.doj,
+          permanentAddress: row.permanentAddress,
+          currentAddress: row.currentAddress,
+        });
+
+        createdUsers.push(user);
+      } catch (err: any) {
+        errors.push({
+          row: i + 2, // Excel row number
+          error: err.message,
+        });
+      }
+    }
+
+    return c.json({
+      message: "Bulk upload completed",
+      successCount: createdUsers.length,
+      errorCount: errors.length,
+      errors,
+    });
+  } catch (error: any) {
+    return c.json({ message: error.message }, 500);
   }
 };
