@@ -1188,7 +1188,6 @@ export const bulkRegister = async (c: Context) => {
       return c.json({ message: "Excel file is required" }, 400);
     }
 
-    // ✅ Convert file → buffer
     let workbook;
 
     try {
@@ -1199,7 +1198,6 @@ export const bulkRegister = async (c: Context) => {
         { message: "Invalid or unsupported file format" },
         400
       );
-      
     }
 
     if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
@@ -1219,7 +1217,7 @@ export const bulkRegister = async (c: Context) => {
 
     if (!sheet) {
       return c.json({ message: "Sheet data not found" }, 400);
-    }        
+    }
 
     // ✅ Excel → JSON
     const usersData = XLSX.utils.sheet_to_json(sheet);
@@ -1242,50 +1240,43 @@ export const bulkRegister = async (c: Context) => {
           throw new Error("Name is required");
         }
 
-        // ✅ Optional validations
-        if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
-          throw new Error("Invalid email");
-        }
-
+        // ✅ Mobile validation
         if (row.mobileNo && !/^\d{10}$/.test(row.mobileNo)) {
           throw new Error("Invalid mobile");
         }
 
-        // ✅ Duplicate check
+        // ✅ Duplicate check (ONLY uniqueId now)
         const duplicate = await checkDuplicateUser(
-          row.email || undefined,
+          undefined,
           row.uniqueId
         );
 
-        if (duplicate) {
-          throw new Error(`Duplicate ${duplicate}`);
+        if (duplicate === "uniqueId") {
+          throw new Error("Duplicate uniqueId");
         }
 
-        // ✅ Password encrypt (optional)
-        let encryptedPassword;
-        if (row.password) {
-          encryptedPassword = await encryptPassword(row.password);
-        }
-
-        // ✅ ObjectId safe handling (OPTIONAL)
+        // ✅ ObjectId safe handling
         const safeObjectId = (val: any) =>
           val && val !== "" ? val : undefined;
 
         const user = await User.create({
           name: row.name,
-          email: row.email || undefined,
-          password: encryptedPassword,
-          role: row.role || "user",
+
+          // ❌ email removed
+          // ❌ password removed
+
+          role: "user", // always default
+
           createdBy: loggedInUser.id,
 
           uniqueId: row.uniqueId,
 
-          // 🔥 Optional ObjectIds
+          // 🔥 Optional ObjectIds (ONLY allowed ones)
           companyId: safeObjectId(row.companyId),
-          designationId: safeObjectId(row.designationId),
-          departmentId: safeObjectId(row.departmentId),
           attendancePolicyId: safeObjectId(row.attendancePolicyId),
           payrollPolicyId: safeObjectId(row.payrollPolicyId),
+
+          // ❌ removed designationId, departmentId
 
           // Other fields
           mobileNo: row.mobileNo,
@@ -1299,7 +1290,7 @@ export const bulkRegister = async (c: Context) => {
         createdUsers.push(user);
       } catch (err: any) {
         errors.push({
-          row: i + 2, // Excel row number
+          row: i + 2,
           error: err.message,
         });
       }
