@@ -746,25 +746,7 @@ export const updateUser = async (c: Context) => {
 
 
 // ---------------- DELETE USER ----------------
-// export const deleteUser = async (c: Context) => {
-//   try {
-//     const id = c.req.param("id");
 
-//     const user = await User.findByIdAndDelete(id);
-
-//     if (!user) {
-//       return c.json({ message: "User not found" }, 404);
-//     }
-
-//     return c.json(
-//       { message: "User deleted successfully" },
-//       200
-//     );
-//   } catch (error) {
-//     console.error("Delete Error:", error);
-//     return c.json({ message: "Invalid User ID" }, 400);
-//   }
-// };
 
 
 export const deleteUser = async (c: Context) => {
@@ -821,7 +803,8 @@ export const getUsersDropdown = async (c: Context) => {
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
-        { "employeeData.employeeId": { $regex: search, $options: "i" } }
+        { "employeeData.employeeId": { $regex: search, $options: "i" } },
+        {"uniqueId": !isNaN(Number(search)) ? Number(search) : undefined }
       ];
     }
     
