@@ -776,9 +776,10 @@ export const deleteUser = async (c: Context) => {
     if (!user) {
       return c.json({ message: "User not found" }, 404);
     }
+    const userObj = user.toObject() as any;
 
     // 👉 Save into DeletedUser collection
-    await DeletedUser.create(user.toObject());
+    await DeletedUser.create(userObj);
 
     // 👉 Delete from main collection
     await User.findByIdAndDelete(id);

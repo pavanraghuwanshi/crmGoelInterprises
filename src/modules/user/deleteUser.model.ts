@@ -94,6 +94,9 @@ export interface IUser extends Document {
   notes?: string;
   deletedAt?: Date;
   deletedBy?: Types.ObjectId;
+  designationId?: Types.ObjectId;
+  departmentId?: Types.ObjectId;
+
 }
 
 
@@ -232,8 +235,16 @@ const deletedUserSchema = new Schema<IUser>(
   ],
   notes: { type: String },
   deletedAt: { type: Date, default: Date.now },
-deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  designationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Designation"
   },
+  departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department"
+  },
+},
   { timestamps: true }
 );
 
