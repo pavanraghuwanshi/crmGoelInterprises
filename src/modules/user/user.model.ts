@@ -96,7 +96,9 @@ export interface IUser extends Document {
   departmentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Department"
-    }
+    },
+    attendancePolicyStartDate?: Date;
+    attendancePolicyEndDate?: Date;
 }
 
 // 📦 Schema
@@ -241,7 +243,9 @@ const userSchema = new Schema<IUser>(
   departmentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Department"
-    }
+    },
+    attendancePolicyStartDate: Date,
+    attendancePolicyEndDate: Date
   },
   { timestamps: true }
 );

@@ -8,7 +8,7 @@ export const assignAttendancePolicyBulk = async (c: Context) => {
   try {
     const body = await c.req.json();
 
-    const { userIds, attendancePolicyId } = body;
+    const { userIds, attendancePolicyId, startDate, endDate } = body;
 
     // ✅ validation
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
@@ -19,6 +19,10 @@ export const assignAttendancePolicyBulk = async (c: Context) => {
       return c.json({ message: "attendancePolicyId is required" }, 400);
     }
 
+    if (!startDate || !endDate) {
+      return c.json({ message: "startDate and endDate are required" }, 400);
+    }
+
     // ✅ logged in user
     const loggedInUser = c.get("user");
 
@@ -26,12 +30,12 @@ export const assignAttendancePolicyBulk = async (c: Context) => {
       return c.json({ message: "Unauthorized" }, 401);
     }
 
-    // ✅ optional: only admin/hr allowed
+    // ✅ only admin/hr allowed
     if (!["admin", "hr"].includes(loggedInUser.role)) {
       return c.json({ message: "Forbidden" }, 403);
     }
 
-    // ✅ convert to ObjectIds (safe)
+    // ✅ convert to ObjectIds
     const objectIds = userIds.map((id: string) => new Types.ObjectId(id));
 
     // ✅ bulk update
@@ -39,7 +43,9 @@ export const assignAttendancePolicyBulk = async (c: Context) => {
       { _id: { $in: objectIds } },
       {
         $set: {
-          attendancePolicyId
+          attendancePolicyId,
+          attendancePolicyStartDate: new Date(startDate),
+          attendancePolicyEndDate: new Date(endDate),
         }
       }
     );
@@ -99,6 +105,12 @@ export const getRosterUsers = async (c: Context) => {
 
     // ✅ fetch users
     const users = await User.find(filter)
+      .populate("departmentId", "name")
+      .populate("designationId", "name")
+      .populate("employeeObjId", "employeeId")
+      .populate("attendancePolicyId", "name")
+      .populate("payrollPolicyId", "name")
+      .populate("companyId", "name ")
       .select("-password") // hide password
       .skip(skip)
       .limit(limit)
