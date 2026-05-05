@@ -1137,10 +1137,14 @@ export const getDeletedUsers = async (c: Context) => {
   try {
     const users = await DeletedUser.find()
       .populate("createdBy")
-      .populate("employeeObjId")
-      .populate("attendancePolicyId")
-      .populate("payrollPolicyId")
-      .populate("companyId");
+      .populate("employeeObjId","employeeId")
+      .populate("attendancePolicyId","name")
+      .populate("payrollPolicyId","name")
+      .populate("companyId","name")
+      .populate("designationId","name")
+      .populate("departmentId","name")
+      .sort({ createdAt: -1 })
+      .lean();
 
     return c.json(users, 200);
   } catch (error) {
