@@ -763,16 +763,25 @@ export const updateMultipleAttendanceStatus = async (c: Context) => {
   try {
     const body = await c.req.json();
 
-    const { userIds, date, status, } = body;
+    const { userIds, date, status, punchIn, punchOut } = body;
 
     if (!userIds || !Array.isArray(userIds) || !date || !status) {
       return c.json({ message: "userIds, date, status required" }, 400);
     }
 
-    // ✅ prepare update data (same logic as yours)
+    // ✅ prepare update data
     const updateData: any = {
       status,
     };
+
+    // ✅ if frontend sends punchIn/punchOut then use them
+    if (punchIn) {
+      updateData.punchIn = new Date(punchIn);
+    }
+
+    if (punchOut) {
+      updateData.punchOut = new Date(punchOut);
+    }
 
     if (status === "Absent") {
       updateData.punchIn = null;
@@ -786,7 +795,7 @@ export const updateMultipleAttendanceStatus = async (c: Context) => {
       updateData.totalWorkedMinutes = 240;
     }
 
-    // ✅ same date logic (no change)
+    // ✅ update
     const result = await Attendance.updateMany(
       {
         userId: { $in: userIds },
