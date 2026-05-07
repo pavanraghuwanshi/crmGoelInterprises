@@ -435,7 +435,9 @@ export const getUsers = async (c: Context) => {
     }
 
     if (gender) {
-      filter.gender = gender.toLowerCase();
+      filter.gender = {
+        $regex: new RegExp(`^${gender.trim()}$`, "i"),
+      };
     }
 
     // ✅ search filter
