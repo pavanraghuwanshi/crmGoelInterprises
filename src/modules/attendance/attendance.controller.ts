@@ -527,7 +527,13 @@ export const getAttendancesWithSummary = async (c: Context) => {
     };
 
     if (companyId) {
-      baseUserFilter.companyId = new Types.ObjectId(companyId);
+      const companyIds = companyId
+        .split(",")
+        .map((id) => new Types.ObjectId(id.trim()));
+
+      baseUserFilter.companyId = {
+        $in: companyIds,
+      };
     }
 
     // ===== SEARCH FILTER =====

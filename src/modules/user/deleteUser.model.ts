@@ -96,6 +96,7 @@ export interface IUser extends Document {
   deletedBy?: Types.ObjectId;
   designationId?: Types.ObjectId;
   departmentId?: Types.ObjectId;
+  companyExitDate?: Date;
 
 }
 

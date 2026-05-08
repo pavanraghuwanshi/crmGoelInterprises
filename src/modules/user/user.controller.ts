@@ -780,6 +780,71 @@ export const deleteUser = async (c: Context) => {
 
 
 
+
+export const deleteMultipleUsers = async (c: Context) => {
+  try {
+    const body = await c.req.json();
+
+    const { userIds, companyExitDate } = body;
+
+    // ✅ validation
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return c.json(
+        { message: "userIds array is required" },
+        400
+      );
+    }
+
+    // ✅ users find
+    const users = await User.find({
+      _id: { $in: userIds },
+    });
+
+    if (users.length === 0) {
+      return c.json(
+        { message: "No users found" },
+        404
+      );
+    }
+
+    // ✅ add exit date before moving
+    const deletedUsers = users.map((user) => {
+      const obj = user.toObject();
+
+      return {
+        ...obj,
+        companyExitDate: companyExitDate || null,
+      };
+    });
+
+    // ✅ save into deleted collection
+    await DeletedUser.insertMany(deletedUsers);
+
+    // ✅ delete from main collection
+    await User.deleteMany({
+      _id: { $in: userIds },
+    });
+
+    return c.json(
+      {
+        message: `${users.length} users moved to deleted users successfully`,
+      },
+      200
+    );
+  } catch (error) {
+    console.error("Bulk Delete Error:", error);
+
+    return c.json(
+      {
+        message: "Internal Server Error",
+      },
+      500
+    );
+  }
+};
+
+
+
 // ---------------- USER DROPDOWN ----------------
 
 export const getUsersDropdown = async (c: Context) => {
@@ -1051,6 +1116,197 @@ export const getUsersStats = async (c: Context) => {
   }
 };
 
+
+
+
+
+
+//  user stats male female 
+
+export const genderDistributionWithFilter = async (c: Context) => {
+  try {
+    // =========================================
+    // QUERY PARAMS
+    // =========================================
+    const companyIds = c.req.query("companyIds");
+    const departmentIds = c.req.query("departmentIds");
+    const designationIds = c.req.query("designationIds");
+
+    // =========================================
+    // BASE FILTER
+    // =========================================
+    const filter: any = {
+      role: { $ne: "admin" },
+    };
+
+    // =========================================
+    // COMPANY FILTER
+    // =========================================
+    if (companyIds?.trim()) {
+      const companyArray = companyIds
+        .split(",")
+        .map((id) => id.trim())
+        .filter(
+          (id) => mongoose.Types.ObjectId.isValid(id)
+        )
+        .map((id) => new Types.ObjectId(id));
+
+      if (companyArray.length > 0) {
+        filter.companyId = {
+          $in: companyArray,
+        };
+      }
+    }
+
+    // =========================================
+    // DEPARTMENT FILTER
+    // =========================================
+    if (departmentIds?.trim()) {
+      const departmentArray = departmentIds
+        .split(",")
+        .map((id) => id.trim())
+        .filter(
+          (id) => mongoose.Types.ObjectId.isValid(id)
+        )
+        .map((id) => new Types.ObjectId(id));
+
+      if (departmentArray.length > 0) {
+        filter.departmentId = {
+          $in: departmentArray,
+        };
+      }
+    }
+
+    // =========================================
+    // DESIGNATION FILTER
+    // =========================================
+    if (designationIds?.trim()) {
+      const designationArray = designationIds
+        .split(",")
+        .map((id) => id.trim())
+        .filter(
+          (id) => mongoose.Types.ObjectId.isValid(id)
+        )
+        .map((id) => new Types.ObjectId(id));
+
+      if (designationArray.length > 0) {
+        filter.designationId = {
+          $in: designationArray,
+        };
+      }
+    }
+
+    // =========================================
+    // TOTAL USERS
+    // =========================================
+    const totalUsers = await User.countDocuments(filter);
+
+    // =========================================
+    // GENDER STATS
+    // =========================================
+    const genderStats = await User.aggregate([
+      {
+        $match: filter,
+      },
+
+      {
+        $group: {
+          _id: null,
+
+          male: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    { $toLower: "$gender" },
+                    "male",
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          female: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    { $toLower: "$gender" },
+                    "female",
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          other: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    {
+                      $ne: [
+                        { $toLower: "$gender" },
+                        "male",
+                      ],
+                    },
+                    {
+                      $ne: [
+                        { $toLower: "$gender" },
+                        "female",
+                      ],
+                    },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    // =========================================
+    // RESPONSE
+    // =========================================
+    return c.json(
+      {
+        success: true,
+
+        data: {
+          totalUsers,
+
+          male: genderStats[0]?.male || 0,
+          female: genderStats[0]?.female || 0,
+          other: genderStats[0]?.other || 0,
+        },
+      },
+      200
+    );
+  } catch (error) {
+    console.error(
+      "Gender Distribution With Filter Error:",
+      error
+    );
+
+    return c.json(
+      {
+        success: false,
+        message: "Internal Server Error",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown Error",
+      },
+      500
+    );
+  }
+};
 
 
 
