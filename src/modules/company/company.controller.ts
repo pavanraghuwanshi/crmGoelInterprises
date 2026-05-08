@@ -1,6 +1,7 @@
 // controllers/company.controller.ts
 import type { Context } from "hono";
 import Company from "./company.model.ts";
+import { EmployeeId } from "../user/employeeId.model.ts";
 
 
 //  create company controller
@@ -153,21 +154,42 @@ export const deleteCompany = async (c: Context) => {
   try {
     const id = c.req.param("id");
 
-    const company = await Company.findByIdAndDelete(id);
+    // pehle company find karo
+    const company = await Company.findById(id);
 
     if (!company) {
       return c.json({ message: "Company not found" }, 404);
     }
 
+    // company prefix store karo
+    const companyPrefix = company.prefix;
+
+    // company delete karo
+    await Company.findByIdAndDelete(id);
+
+    // us prefix ke saare employee ids delete karo
+    if (companyPrefix) {
+      await EmployeeId.deleteMany({
+        prefix: companyPrefix,
+      });
+    }
+
     return c.json(
       {
         success: true,
-        message: "Company deleted successfully",
+        message: "Company and related Employee IDs deleted successfully",
       },
       200
     );
   } catch (error) {
     console.error("Delete Company Error:", error);
-    return c.json({ message: "Internal Server Error" }, 500);
+
+    return c.json(
+      {
+        success: false,
+        message: "Internal Server Error",
+      },
+      500
+    );
   }
 };
