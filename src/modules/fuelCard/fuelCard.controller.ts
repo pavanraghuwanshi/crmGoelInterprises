@@ -25,8 +25,34 @@ export const createFuelCard = async (c: Context) => {
 
 export const getFuelCards = async (c: Context) => {
   try {
-    const cards = await FuelCard.find().populate("createdBy", "name email");
-    return c.json({ data: cards });
+    const page = parseInt(c.req.query("page") || "1");
+    const limit = parseInt(c.req.query("limit") || "10");
+    const sortBy = c.req.query("sortBy") || "createdAt";
+    const sortOrder = c.req.query("sortOrder") || "desc";
+
+    const skip = (page - 1) * limit;
+
+    const sort: any = {};
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+
+    const [cards, total] = await Promise.all([
+      FuelCard.find()
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate("createdBy", "name email"),
+      FuelCard.countDocuments()
+    ]);
+
+    return c.json({
+      data: cards,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
