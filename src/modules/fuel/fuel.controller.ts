@@ -1,13 +1,53 @@
 import type { Context } from "hono";
 import Fuel from "./fuel.model";
+import path from "path";
+import fs from "fs";
+import mongoose from "mongoose";
 
 export const createFuelEntry = async (c: Context) => {
   try {
     const user = c.get("user");
-    const body = await c.req.json();
-    
+    const contentType = c.req.header("content-type") || "";
+    let fuelData: any = {};
+    let uploadedFilePaths: string[] = [];
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await c.req.formData();
+      
+      // Extract basic fields
+      fuelData.vehicleId = formData.get("vehicleId");
+      fuelData.odometer = Number(formData.get("odometer"));
+      fuelData.fuelType = formData.get("fuelType");
+      fuelData.ratePerLtr = Number(formData.get("ratePerLtr"));
+      fuelData.totalAmount = Number(formData.get("totalAmount"));
+      if (formData.has("fillingDate")) {
+        fuelData.fillingDate = new Date(formData.get("fillingDate") as string);
+      }
+
+      // Handle images
+      const files = formData.getAll("images");
+      const uploadDir = path.join(process.cwd(), "uploads", "fuel");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      for (const file of files) {
+        if (file instanceof File) {
+          const timestamp = Date.now();
+          const sanitizedName = file.name.replace(/\s+/g, "_");
+          const uniqueName = `${timestamp}-${sanitizedName}`;
+          const filePath = path.join(uploadDir, uniqueName);
+          await Bun.write(filePath, file);
+          uploadedFilePaths.push(`/uploads/fuel/${uniqueName}`);
+        }
+      }
+      fuelData.images = uploadedFilePaths;
+    } else {
+      fuelData = await c.req.json();
+    }
+
     const newFuelEntry = new Fuel({
-      ...body,
+      ...fuelData,
       createdBy: user.id,
     });
 
@@ -18,18 +58,115 @@ export const createFuelEntry = async (c: Context) => {
       data: newFuelEntry,
     }, 201);
   } catch (error: any) {
+    console.error("Create fuel entry error:", error);
     return c.json({ error: error.message || "Failed to create fuel entry" }, 500);
   }
 };
 
 export const getFuelEntries = async (c: Context) => {
   try {
-    const entries = await Fuel.find()
-      .populate("vehicleId", "vehicleNo vehicleCode")
-      .populate("createdBy", "name email");
-    return c.json({ data: entries });
+    const page = parseInt(c.req.query("page") || "1");
+    const limit = parseInt(c.req.query("limit") || "10");
+    const search = c.req.query("search") || "";
+    const vehicleId = c.req.query("vehicleId");
+    const sortBy = c.req.query("sortBy") || "createdAt";
+    const sortOrder = c.req.query("sortOrder") || "desc";
+
+    const skip = (page - 1) * limit;
+
+    const pipeline: any[] = [
+      {
+        $lookup: {
+          from: "vehicles",
+          localField: "vehicleId",
+          foreignField: "_id",
+          as: "vehicleDetails",
+        },
+      },
+      {
+        $unwind: { path: "$vehicleDetails", preserveNullAndEmptyArrays: true },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "createdBy",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      {
+        $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true },
+      },
+    ];
+
+    const match: any = {};
+    if (search) {
+      match.$or = [
+        { "vehicleDetails.vehicleNo": { $regex: search, $options: "i" } },
+        { "vehicleDetails.vehicleCode": { $regex: search, $options: "i" } },
+        { fuelType: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (vehicleId) {
+      match.vehicleId = new mongoose.Types.ObjectId(vehicleId);
+    }
+
+    if (Object.keys(match).length > 0) {
+      pipeline.push({ $match: match });
+    }
+
+    const sort: any = {};
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+
+    const [results] = await Fuel.aggregate([
+      ...pipeline,
+      { $sort: sort },
+      {
+        $facet: {
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $project: {
+                _id: 1,
+                vehicleId: "$vehicleDetails",
+                odometer: 1,
+                fuelType: 1,
+                ratePerLtr: 1,
+                totalAmount: 1,
+                fillingDate: 1,
+                images: 1,
+                createdBy: {
+                  _id: "$userDetails._id",
+                  name: "$userDetails.name",
+                  email: "$userDetails.email",
+                },
+                createdAt: 1,
+                updatedAt: 1,
+              },
+            },
+          ],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ]);
+
+    const fuelEntries = results.data;
+    const total = results.totalCount[0]?.count || 0;
+
+    return c.json({
+      data: fuelEntries,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error: any) {
-    return c.json({ error: error.message }, 500);
+    console.error("Get fuel entries error:", error);
+    return c.json({ error: error.message || "Failed to fetch fuel entries" }, 500);
   }
 };
 
@@ -49,12 +186,53 @@ export const getFuelEntryById = async (c: Context) => {
 export const updateFuelEntry = async (c: Context) => {
   try {
     const id = c.req.param("id");
-    const body = await c.req.json();
-    
-    const updatedEntry = await Fuel.findByIdAndUpdate(id, body, {
-      new: true,
-      runValidators: true,
-    });
+    const contentType = c.req.header("content-type") || "";
+    let updateData: any = {};
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await c.req.formData();
+      
+      // Basic fields
+      if (formData.has("vehicleId")) updateData.vehicleId = formData.get("vehicleId");
+      if (formData.has("odometer")) updateData.odometer = Number(formData.get("odometer"));
+      if (formData.has("fuelType")) updateData.fuelType = formData.get("fuelType");
+      if (formData.has("ratePerLtr")) updateData.ratePerLtr = Number(formData.get("ratePerLtr"));
+      if (formData.has("totalAmount")) updateData.totalAmount = Number(formData.get("totalAmount"));
+      if (formData.has("fillingDate")) updateData.fillingDate = new Date(formData.get("fillingDate") as string);
+
+      // Handle image updates
+      const files = formData.getAll("images");
+      if (files.length > 0 && files[0] instanceof File) {
+        const newFilePaths: string[] = [];
+        const uploadDir = path.join(process.cwd(), "uploads", "fuel");
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+        for (const file of files) {
+          if (file instanceof File) {
+            const timestamp = Date.now();
+            const sanitizedName = file.name.replace(/\s+/g, "_");
+            const uniqueName = `${timestamp}-${sanitizedName}`;
+            const filePath = path.join(uploadDir, uniqueName);
+            await Bun.write(filePath, file);
+            newFilePaths.push(`/uploads/fuel/${uniqueName}`);
+          }
+        }
+        updateData.$push = { images: { $each: newFilePaths } };
+      }
+    } else {
+      updateData = await c.req.json();
+    }
+
+    const { $push, ...setFields } = updateData;
+    const mongoUpdate: any = {};
+    if (Object.keys(setFields).length > 0) mongoUpdate.$set = setFields;
+    if ($push) mongoUpdate.$push = $push;
+
+    const updatedEntry = await Fuel.findByIdAndUpdate(
+      id,
+      mongoUpdate,
+      { new: true, runValidators: true }
+    );
 
     if (!updatedEntry) return c.json({ error: "Fuel entry not found" }, 404);
 
@@ -63,6 +241,7 @@ export const updateFuelEntry = async (c: Context) => {
       data: updatedEntry,
     });
   } catch (error: any) {
+    console.error("Update fuel entry error:", error);
     return c.json({ error: error.message }, 500);
   }
 };
@@ -70,10 +249,70 @@ export const updateFuelEntry = async (c: Context) => {
 export const deleteFuelEntry = async (c: Context) => {
   try {
     const id = c.req.param("id");
-    const deletedEntry = await Fuel.findByIdAndDelete(id);
-    if (!deletedEntry) return c.json({ error: "Fuel entry not found" }, 404);
-    return c.json({ message: "Fuel entry deleted successfully" });
+    const entry = await Fuel.findById(id);
+    
+    if (!entry) {
+      return c.json({ error: "Fuel entry not found" }, 404);
+    }
+
+    // Delete static files from disk
+    if (entry.images && entry.images.length > 0) {
+      for (const fileRelativePath of entry.images) {
+        const fullPath = path.join(process.cwd(), fileRelativePath.startsWith('/') ? fileRelativePath.substring(1) : fileRelativePath);
+        if (fs.existsSync(fullPath)) {
+          try {
+            fs.unlinkSync(fullPath);
+          } catch (err) {
+            console.error(`Failed to delete file: ${fullPath}`, err);
+          }
+        }
+      }
+    }
+
+    await Fuel.findByIdAndDelete(id);
+    return c.json({ message: "Fuel entry and associated images deleted successfully" });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
+  }
+};
+
+export const deleteFuelImages = async (c: Context) => {
+  try {
+    const { fuelId, imagePaths } = await c.req.json<{ fuelId: string, imagePaths: string[] }>();
+
+    if (!fuelId || !imagePaths || !Array.isArray(imagePaths)) {
+      return c.json({ error: "fuelId and an array of imagePaths are required" }, 400);
+    }
+
+    const entry = await Fuel.findById(fuelId);
+    if (!entry) {
+      return c.json({ error: "Fuel entry not found" }, 404);
+    }
+
+    const remainingImages = entry.images.filter(img => !imagePaths.includes(img));
+    const imagesToDelete = entry.images.filter(img => imagePaths.includes(img));
+
+    // Delete static files from disk
+    for (const fileRelativePath of imagesToDelete) {
+      const fullPath = path.join(process.cwd(), fileRelativePath.startsWith('/') ? fileRelativePath.substring(1) : fileRelativePath);
+      if (fs.existsSync(fullPath)) {
+        try {
+          fs.unlinkSync(fullPath);
+        } catch (err) {
+          console.error(`Failed to delete file: ${fullPath}`, err);
+        }
+      }
+    }
+
+    entry.images = remainingImages;
+    await entry.save();
+
+    return c.json({
+      message: "Specified images deleted successfully",
+      data: entry
+    });
+  } catch (error: any) {
+    console.error("Delete images error:", error);
+    return c.json({ error: error.message || "Failed to delete images" }, 500);
   }
 };

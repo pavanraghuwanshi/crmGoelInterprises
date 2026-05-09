@@ -24,10 +24,45 @@ export const createVehicle = async (c: Context) => {
 
 export const getVehicles = async (c: Context) => {
   try {
-    const vehicles = await Vehicle.find().populate("createdBy", "name email");
-    return c.json({ data: vehicles });
+    const page = parseInt(c.req.query("page") || "1");
+    const limit = parseInt(c.req.query("limit") || "10");
+    const search = c.req.query("search") || "";
+    const sortBy = c.req.query("sortBy") || "createdAt";
+    const sortOrder = c.req.query("sortOrder") || "desc";
+
+    const skip = (page - 1) * limit;
+
+    const filter: any = {};
+    if (search) {
+      filter.$or = [
+        { vehicleNo: { $regex: search, $options: "i" } },
+        { vehicleCode: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const sort: any = {};
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+
+    const [vehicles, total] = await Promise.all([
+      Vehicle.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate("createdBy", "name email"),
+      Vehicle.countDocuments(filter)
+    ]);
+
+    return c.json({
+      data: vehicles,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (error: any) {
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: error.message || "Failed to fetch vehicles" }, 500);
   }
 };
 

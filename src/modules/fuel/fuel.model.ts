@@ -7,6 +7,7 @@ export interface IFuel extends Document {
   ratePerLtr: number;
   totalAmount: number;
   fillingDate: Date;
+  images: string[];
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +41,7 @@ const FuelSchema: Schema = new Schema(
       required: true,
       default: Date.now,
     },
+    images: [{ type: String }],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

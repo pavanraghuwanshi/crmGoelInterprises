@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import FuelCard from "./fuelCard.model";
+import Fuel from "../fuel/fuel.model";
 
 export const createFuelCard = async (c: Context) => {
   try {
@@ -70,6 +71,32 @@ export const deleteFuelCard = async (c: Context) => {
     if (!deletedCard) return c.json({ error: "Fuel Card not found" }, 404);
     return c.json({ message: "Fuel Card deleted successfully" });
   } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const getFuelCardStats = async (c: Context) => {
+  try {
+    const [totalAddedResult, totalExpendedResult] = await Promise.all([
+      FuelCard.aggregate([
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]),
+      Fuel.aggregate([
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+      ])
+    ]);
+
+    const totalAdded = totalAddedResult[0]?.total || 0;
+    const totalExpended = totalExpendedResult[0]?.total || 0;
+    const remaining = totalAdded - totalExpended;
+
+    return c.json({
+      totalAdded,
+      totalExpended,
+      remaining
+    });
+  } catch (error: any) {
+    console.error("Stats error:", error);
     return c.json({ error: error.message }, 500);
   }
 };

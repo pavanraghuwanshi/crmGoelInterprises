@@ -5,6 +5,7 @@ import {
   getFuelEntryById,
   updateFuelEntry,
   deleteFuelEntry,
+  deleteFuelImages,
 } from "./fuel.controller";
 import { verifyToken } from "../../middleware/auth.middleware";
 
@@ -17,5 +18,6 @@ fuelRoutes.get("/", getFuelEntries);
 fuelRoutes.get("/:id", getFuelEntryById);
 fuelRoutes.patch("/:id", updateFuelEntry);
 fuelRoutes.delete("/:id", deleteFuelEntry);
+fuelRoutes.post("/delete-images", deleteFuelImages);
 
 export default fuelRoutes;
