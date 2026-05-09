@@ -87,8 +87,9 @@ export const getRosterUsers = async (c: Context) => {
     }
 
     // ✅ base filter
-    let filter: any = {};
-
+    let filter: any = {
+      attendancePolicyId: { $exists: true, $ne: null }
+    };
     // 🔍 search (name, email, mobile)
     if (search) {
       filter.$or = [
