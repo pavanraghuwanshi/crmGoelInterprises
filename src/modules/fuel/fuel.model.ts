@@ -1,0 +1,52 @@
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface IFuel extends Document {
+  vehicleId: mongoose.Types.ObjectId;
+  odometer: number;
+  fuelType: string;
+  ratePerLtr: number;
+  totalAmount: number;
+  fillingDate: Date;
+  createdBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const FuelSchema: Schema = new Schema(
+  {
+    vehicleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vehicle",
+      required: true,
+    },
+    odometer: {
+      type: Number,
+      required: true,
+    },
+    fuelType: {
+      type: String,
+      required: true,
+    },
+    ratePerLtr: {
+      type: Number,
+      required: true,
+    },
+    totalAmount: {
+      type: Number,
+      required: true,
+    },
+    fillingDate: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model<IFuel>("Fuel", FuelSchema);

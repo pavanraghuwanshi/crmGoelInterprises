@@ -16,6 +16,12 @@ import empIdRoutes from "./modules/user/employeeId.route";
 import reminderRoutes from "./modules/reminder/reminder.route";
 import modulePermissionRoutes from "./modules/AssignedPermission/permission.route";
 import deptDesgRoutes from "./modules/Designation_And_Department/Designation_And_Department.route";
+import fuelCardRoutes from "./modules/fuelCard/fuelCard.route";
+import vehicleRoutes from "./modules/vehicle/vehicle.route";
+import fuelRoutes from "./modules/fuel/fuel.route";
+
+
+
 
 
 const app = new Hono();
@@ -90,6 +96,12 @@ app.route("/api/reminder", reminderRoutes);
 
 
 app.route("/api/module/permission", modulePermissionRoutes);
+app.route("/api/fuel-card", fuelCardRoutes);
+app.route("/api/vehicle", vehicleRoutes);
+app.route("/api/fuel", fuelRoutes);
+
+
+
 
 
 
