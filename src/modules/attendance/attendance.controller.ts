@@ -96,57 +96,265 @@ const adjustIST = (dt: Date | null) => {
   return newDt;
 };
 
+// export const uploadBiometricData = async (c: Context) => {
+//   try {
+//     const formData = await c.req.parseBody();
+//     const file = formData["file"];
+//     if (!file || typeof file === "string") {
+//       return c.json({ message: "No valid file uploaded" }, 400);
+//     }
+
+//     // ===== READ FILE =====
+//     const buffer = Buffer.from(await (file as any).arrayBuffer());
+//     let text = buffer.toString("utf16le");
+//     if (!text.includes("\n")) text = buffer.toString("utf8");
+//     if (!text.includes("\n")) text = new TextDecoder("utf-8").decode(buffer);
+
+//     const lines = text.split(/\r?\n/);
+
+//     // ===== GET POLICY =====
+//     const policyId = formData["policyId"];
+//     let activePolicy = policyId
+//       ? await AttendancePolicy.findById(policyId)
+//       : await AttendancePolicy.findOne().sort({ createdAt: -1 });
+
+//     if (!activePolicy) return c.json({ message: "No active attendance policy found" }, 400);
+
+//     // ===== GROUP DATA BY EN NO AND DATE =====
+//     const map = new Map<number, Map<string, Date[]>>();
+//     for (const line of lines) {
+//       const parts = line.split("\t");
+//       if (parts.length < 10) continue;
+
+//       const enNoStr = parts[2]?.trim();
+//       const dateStr = parts[9]?.trim();
+//       if (!enNoStr || !dateStr) continue;
+
+//       const enNo = Number(enNoStr);
+//       if (isNaN(enNo)) continue;
+
+//       const dt = new Date(dateStr);
+//       if (isNaN(dt.getTime())) continue;
+
+//       const dateKey = dt.toISOString().slice(0, 10); // YYYY-MM-DD
+
+//       if (!map.has(enNo)) map.set(enNo, new Map());
+//       const userDates = map.get(enNo)!;
+//       if (!userDates.has(dateKey)) userDates.set(dateKey, []);
+//       userDates.get(dateKey)!.push(dt);
+//     }
+
+//     // ===== FETCH USERS =====
+//     const enNosInFile = Array.from(map.keys());
+//     const users = await User.find({ uniqueId: { $in: enNosInFile } }).populate("attendancePolicyId");
+
+//     const userMap = new Map<number, any>();
+//     const userPolicyMap = new Map<number, any>();
+//     const userCompanyMap = new Map<number, any>();
+
+//     users.forEach((u: any) => {
+//       userMap.set(u.uniqueId, u._id);
+//       userCompanyMap.set(u.uniqueId, u.companyId); // ✅ store companyId
+//       if (u.attendancePolicyId) userPolicyMap.set(u.uniqueId, u.attendancePolicyId);
+//     });
+
+//     // ===== FETCH HOLIDAYS =====
+//     const allDates = Array.from(map.values()).flatMap(datesObj =>
+//       Array.from(datesObj.keys()).map(k => new Date(k))
+//     );
+//     const startDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+//     const endDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+
+//     const holidays = await CalendarDay.find({
+//       date: { $gte: startDate, $lte: endDate },
+//       dayType: "holiday",
+//     }).select("date");
+//     const holidaySet = new Set(holidays.map(h => h.date.toISOString().slice(0, 10)));
+
+//     // ===== PROCESS ATTENDANCE =====
+//     const ops: any[] = [];
+
+//     for (const [enNo, datesObj] of map.entries()) {
+//       const userId = userMap.get(enNo);
+//       const companyId = userCompanyMap.get(enNo);
+//       if (!userId) continue;
+
+//       const policy: any = userPolicyMap.get(enNo) || activePolicy;
+//       const [shiftInHours, shiftInMinutes] = (policy.shiftInTime || "09:00").split(":").map(Number);
+//       const [shiftOutHours, shiftOutMinutes] = (policy.shiftOutTime || "18:00").split(":").map(Number);
+
+//       for (const [dateKey, punches] of datesObj.entries()) {
+//         punches.sort((a, b) => a.getTime() - b.getTime());
+
+//         const punchInRaw = punches[0];
+//         const punchOutRaw = punches.length > 1 ? punches[punches.length - 1] : null;
+
+//         const punchIn = adjustIST(punchInRaw ?? null);
+//         const punchOut = adjustIST(punchOutRaw ?? null);
+
+//         // ===== STATUS =====
+//         let status: "Present" | "Absent" | "Half-Day" = "Absent";
+//         if (punchIn && punchOut) status = "Present";
+//         else if (punchIn && !punchOut) status = "Half-Day";
+
+//         // ===== WORKED MINUTES & OVERTIME =====
+//         let totalWorkedMinutes = 0;
+//         let overtimeHours = 0;
+//         let overtimePay = 0;
+
+//         if (punchIn && punchOut) {
+//           totalWorkedMinutes = (punchOut.getTime() - punchIn.getTime()) / 60000;
+
+//           const shiftStart = new Date(punchIn);
+//           shiftStart.setHours(shiftInHours, shiftInMinutes, 0, 0);
+
+//           const shiftEnd = new Date(punchIn);
+//           shiftEnd.setHours(shiftOutHours, shiftOutMinutes, 0, 0);
+
+//           const isHoliday = holidaySet.has(dateKey);
+
+//           if (!isHoliday) {
+//             let extraMins = 0;
+
+//             const earlyMins = (shiftStart.getTime() - punchIn.getTime()) / 60000;
+//             if (earlyMins > 0 && earlyMins >= policy.overtimeThresholdMins) extraMins += earlyMins;
+
+//             const lateMins = (punchOut.getTime() - shiftEnd.getTime()) / 60000;
+//             if (lateMins > 0 && lateMins >= policy.overtimeThresholdMins) extraMins += lateMins;
+
+//             overtimeHours = Number((extraMins / 60).toFixed(2));
+//             overtimePay = overtimeHours * policy.overtimeHourlyRate;
+//           }
+//         }
+
+//         // ===== BULK OPS =====
+//         ops.push({
+//           updateOne: {
+//             filter: { userId, date: new Date(dateKey) },
+//             update: {
+//               $set: {
+//                 uniqueId: enNo,
+//                 companyId, // ✅ added
+//                 punchIn,
+//                 punchOut,
+//                 status,
+//                 totalWorkedMinutes,
+//                 overtimeHours,
+//                 overtimePay,
+//               },
+//             },
+//             upsert: true,
+//           },
+//         });
+//       }
+//     }
+
+//     if (ops.length > 0) await Attendance.bulkWrite(ops);
+
+//     return c.json({
+//       message: "Attendance processed successfully",
+//       recordsProcessed: ops.length,
+//     }, 200);
+//   } catch (error: any) {
+//     console.error(error);
+//     return c.json({ message: error.message }, 500);
+//   }
+// };
+
+
+// ===== GET ALL ATTENDANCES WITH FILTERS & PAGINATION =====
+
+
+
 export const uploadBiometricData = async (c: Context) => {
   try {
     const formData = await c.req.parseBody();
     const file = formData["file"];
+
     if (!file || typeof file === "string") {
       return c.json({ message: "No valid file uploaded" }, 400);
     }
 
     // ===== READ FILE =====
     const buffer = Buffer.from(await (file as any).arrayBuffer());
+
     let text = buffer.toString("utf16le");
-    if (!text.includes("\n")) text = buffer.toString("utf8");
-    if (!text.includes("\n")) text = new TextDecoder("utf-8").decode(buffer);
+
+    if (!text.includes("\n")) {
+      text = buffer.toString("utf8");
+    }
+
+    if (!text.includes("\n")) {
+      text = new TextDecoder("utf-8").decode(buffer);
+    }
 
     const lines = text.split(/\r?\n/);
 
     // ===== GET POLICY =====
     const policyId = formData["policyId"];
+
     let activePolicy = policyId
       ? await AttendancePolicy.findById(policyId)
       : await AttendancePolicy.findOne().sort({ createdAt: -1 });
 
-    if (!activePolicy) return c.json({ message: "No active attendance policy found" }, 400);
+    if (!activePolicy) {
+      return c.json(
+        { message: "No active attendance policy found" },
+        400
+      );
+    }
 
-    // ===== GROUP DATA BY EN NO AND DATE =====
+    // ===== GROUP DATA BY EN NO AND DATE (IST LOCAL DATE) =====
     const map = new Map<number, Map<string, Date[]>>();
+
     for (const line of lines) {
       const parts = line.split("\t");
+
       if (parts.length < 10) continue;
 
       const enNoStr = parts[2]?.trim();
       const dateStr = parts[9]?.trim();
+
       if (!enNoStr || !dateStr) continue;
 
       const enNo = Number(enNoStr);
+
       if (isNaN(enNo)) continue;
 
+      // ✅ Parse directly
       const dt = new Date(dateStr);
+
       if (isNaN(dt.getTime())) continue;
 
-      const dateKey = dt.toISOString().slice(0, 10); // YYYY-MM-DD
+      // ✅ IMPORTANT:
+      // local date use karo
+      // toISOString() mat use karo
+      const dateKey =
+        dt.getFullYear() +
+        "-" +
+        String(dt.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(dt.getDate()).padStart(2, "0");
 
-      if (!map.has(enNo)) map.set(enNo, new Map());
+      if (!map.has(enNo)) {
+        map.set(enNo, new Map());
+      }
+
       const userDates = map.get(enNo)!;
-      if (!userDates.has(dateKey)) userDates.set(dateKey, []);
+
+      if (!userDates.has(dateKey)) {
+        userDates.set(dateKey, []);
+      }
+
       userDates.get(dateKey)!.push(dt);
     }
 
     // ===== FETCH USERS =====
     const enNosInFile = Array.from(map.keys());
-    const users = await User.find({ uniqueId: { $in: enNosInFile } }).populate("attendancePolicyId");
+
+    const users = await User.find({
+      uniqueId: { $in: enNosInFile },
+    }).populate("attendancePolicyId");
 
     const userMap = new Map<number, any>();
     const userPolicyMap = new Map<number, any>();
@@ -154,22 +362,45 @@ export const uploadBiometricData = async (c: Context) => {
 
     users.forEach((u: any) => {
       userMap.set(u.uniqueId, u._id);
-      userCompanyMap.set(u.uniqueId, u.companyId); // ✅ store companyId
-      if (u.attendancePolicyId) userPolicyMap.set(u.uniqueId, u.attendancePolicyId);
+
+      userCompanyMap.set(u.uniqueId, u.companyId);
+
+      if (u.attendancePolicyId) {
+        userPolicyMap.set(u.uniqueId, u.attendancePolicyId);
+      }
     });
 
     // ===== FETCH HOLIDAYS =====
-    const allDates = Array.from(map.values()).flatMap(datesObj =>
-      Array.from(datesObj.keys()).map(k => new Date(k))
+    const allDates = Array.from(map.values()).flatMap((datesObj) =>
+      Array.from(datesObj.keys()).map((k) => new Date(k))
     );
-    const startDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-    const endDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+
+    const startDate = new Date(
+      Math.min(...allDates.map((d) => d.getTime()))
+    );
+
+    const endDate = new Date(
+      Math.max(...allDates.map((d) => d.getTime()))
+    );
 
     const holidays = await CalendarDay.find({
       date: { $gte: startDate, $lte: endDate },
       dayType: "holiday",
     }).select("date");
-    const holidaySet = new Set(holidays.map(h => h.date.toISOString().slice(0, 10)));
+
+    const holidaySet = new Set(
+      holidays.map((h) => {
+        const d = new Date(h.date);
+
+        return (
+          d.getFullYear() +
+          "-" +
+          String(d.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(d.getDate()).padStart(2, "0")
+        );
+      })
+    );
 
     // ===== PROCESS ATTENDANCE =====
     const ops: any[] = [];
@@ -177,25 +408,44 @@ export const uploadBiometricData = async (c: Context) => {
     for (const [enNo, datesObj] of map.entries()) {
       const userId = userMap.get(enNo);
       const companyId = userCompanyMap.get(enNo);
+
       if (!userId) continue;
 
-      const policy: any = userPolicyMap.get(enNo) || activePolicy;
-      const [shiftInHours, shiftInMinutes] = (policy.shiftInTime || "09:00").split(":").map(Number);
-      const [shiftOutHours, shiftOutMinutes] = (policy.shiftOutTime || "18:00").split(":").map(Number);
+      const policy: any =
+        userPolicyMap.get(enNo) || activePolicy;
+
+      const [shiftInHours, shiftInMinutes] = (
+        policy.shiftInTime || "09:00"
+      )
+        .split(":")
+        .map(Number);
+
+      const [shiftOutHours, shiftOutMinutes] = (
+        policy.shiftOutTime || "18:00"
+      )
+        .split(":")
+        .map(Number);
 
       for (const [dateKey, punches] of datesObj.entries()) {
         punches.sort((a, b) => a.getTime() - b.getTime());
 
-        const punchInRaw = punches[0];
-        const punchOutRaw = punches.length > 1 ? punches[punches.length - 1] : null;
+        const punchIn =
+          punches.length > 0 ? punches[0] : null;
 
-        const punchIn = adjustIST(punchInRaw ?? null);
-        const punchOut = adjustIST(punchOutRaw ?? null);
+        const punchOut =
+          punches.length > 1
+            ? punches[punches.length - 1]
+            : null;
 
         // ===== STATUS =====
-        let status: "Present" | "Absent" | "Half-Day" = "Absent";
-        if (punchIn && punchOut) status = "Present";
-        else if (punchIn && !punchOut) status = "Half-Day";
+        let status: "Present" | "Absent" | "Half-Day" =
+          "Absent";
+
+        if (punchIn && punchOut) {
+          status = "Present";
+        } else if (punchIn && !punchOut) {
+          status = "Half-Day";
+        }
 
         // ===== WORKED MINUTES & OVERTIME =====
         let totalWorkedMinutes = 0;
@@ -203,66 +453,127 @@ export const uploadBiometricData = async (c: Context) => {
         let overtimePay = 0;
 
         if (punchIn && punchOut) {
-          totalWorkedMinutes = (punchOut.getTime() - punchIn.getTime()) / 60000;
+          totalWorkedMinutes =
+            (punchOut.getTime() - punchIn.getTime()) /
+            60000;
 
+          // ✅ shift timing same local date pe
           const shiftStart = new Date(punchIn);
-          shiftStart.setHours(shiftInHours, shiftInMinutes, 0, 0);
+
+          shiftStart.setHours(
+            shiftInHours,
+            shiftInMinutes,
+            0,
+            0
+          );
 
           const shiftEnd = new Date(punchIn);
-          shiftEnd.setHours(shiftOutHours, shiftOutMinutes, 0, 0);
+
+          shiftEnd.setHours(
+            shiftOutHours,
+            shiftOutMinutes,
+            0,
+            0
+          );
 
           const isHoliday = holidaySet.has(dateKey);
 
           if (!isHoliday) {
             let extraMins = 0;
 
-            const earlyMins = (shiftStart.getTime() - punchIn.getTime()) / 60000;
-            if (earlyMins > 0 && earlyMins >= policy.overtimeThresholdMins) extraMins += earlyMins;
+            // Early punch in
+            const earlyMins =
+              (shiftStart.getTime() -
+                punchIn.getTime()) /
+              60000;
 
-            const lateMins = (punchOut.getTime() - shiftEnd.getTime()) / 60000;
-            if (lateMins > 0 && lateMins >= policy.overtimeThresholdMins) extraMins += lateMins;
+            if (
+              earlyMins > 0 &&
+              earlyMins >= policy.overtimeThresholdMins
+            ) {
+              extraMins += earlyMins;
+            }
 
-            overtimeHours = Number((extraMins / 60).toFixed(2));
-            overtimePay = overtimeHours * policy.overtimeHourlyRate;
+            // Late punch out
+            const lateMins =
+              (punchOut.getTime() -
+                shiftEnd.getTime()) /
+              60000;
+
+            if (
+              lateMins > 0 &&
+              lateMins >= policy.overtimeThresholdMins
+            ) {
+              extraMins += lateMins;
+            }
+
+            overtimeHours = Number(
+              (extraMins / 60).toFixed(2)
+            );
+
+            overtimePay =
+              overtimeHours *
+              policy.overtimeHourlyRate;
           }
         }
 
         // ===== BULK OPS =====
         ops.push({
           updateOne: {
-            filter: { userId, date: new Date(dateKey) },
+            filter: {
+              userId,
+              date: new Date(dateKey),
+            },
+
             update: {
               $set: {
                 uniqueId: enNo,
-                companyId, // ✅ added
+                companyId,
+
+                // ✅ direct save
+                // Mongo automatically UTC store karega
                 punchIn,
                 punchOut,
+
                 status,
                 totalWorkedMinutes,
                 overtimeHours,
                 overtimePay,
               },
             },
+
             upsert: true,
           },
         });
       }
     }
 
-    if (ops.length > 0) await Attendance.bulkWrite(ops);
+    if (ops.length > 0) {
+      await Attendance.bulkWrite(ops);
+    }
 
-    return c.json({
-      message: "Attendance processed successfully",
-      recordsProcessed: ops.length,
-    }, 200);
+    return c.json(
+      {
+        message: "Attendance processed successfully",
+        recordsProcessed: ops.length,
+      },
+      200
+    );
   } catch (error: any) {
     console.error(error);
-    return c.json({ message: error.message }, 500);
+
+    return c.json(
+      {
+        message: error.message,
+      },
+      500
+    );
   }
 };
 
 
-// ===== GET ALL ATTENDANCES WITH FILTERS & PAGINATION =====
+
+
 
 export const getAttendances = async (c: Context) => {
   try {
