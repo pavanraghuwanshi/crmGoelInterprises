@@ -855,10 +855,14 @@ export const getAttendancesWithSummary = async (c: Context) => {
       searchFilter.$or = [
         { name: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
-        { uniqueId: { $regex: search, $options: "i" } },
-        { employeeId: { $regex: search, $options: "i" } },
       ];
+      if (!isNaN(Number(search))) {
+        searchFilter.$or.push({
+          uniqueId: Number(search),
+        });
+      }
     }
+    
 
     if (userId) {
       searchFilter._id = new Types.ObjectId(userId);
