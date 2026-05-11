@@ -19,16 +19,13 @@ import deptDesgRoutes from "./modules/Designation_And_Department/Designation_And
 import fuelCardRoutes from "./modules/fuelCard/fuelCard.route";
 import vehicleRoutes from "./modules/vehicle/vehicle.route";
 import fuelRoutes from "./modules/fuel/fuel.route";
-
-
+import trackAssetRoutes from "./modules/trackAssetRecords/trackAssetRecords.route";
 
 
 
 const app = new Hono();
 
 // ✅ Allow ALL CORS
-
-
 app.use("*", cors({
   origin: (origin) => "*",
   credentials: true,
@@ -49,58 +46,28 @@ app.use(
   })
 );
 
-// 👤 user routes
+
+
+
 app.route("/api/user", userRoutes);
-
-
-
-// 👤 EMP ID routes
 app.route("/api/employee-id", empIdRoutes);
-
-// 📆 attendance routes
 app.route("/api/attendance", attendanceRoutes);
 app.route("/api/company-calendar", companyCalendarRouter);
-
-
-//  employee salary routes
 app.route("/api/employee-salary", employeeSalaryRoutes);
-
-
-// 💰 payroll routes
 app.route("/api/payroll", payrollRoutes);
-
-// 📁 doccenter routes
 app.route("/api/doccenter", docCenterRoutes);
-
-//  Roster routes
 app.route("/api/roster", rosterRoute);
-
 app.route("/api/company", companyRoute);
-
-
-
 app.route("/api/org", deptDesgRoutes);
-
-
-//  Asset routes
 app.route("/api/assets", assetRoutes);
-
-// leave routes
 app.route("/api/leave", leaveRoutes);
-
-// 🤝 recruitment routes
 app.route("/api/recruitment", recruitmentRoutes);
-
-// 🔔 reminder routes
 app.route("/api/reminder", reminderRoutes);
-
-
 app.route("/api/module/permission", modulePermissionRoutes);
 app.route("/api/fuel-card", fuelCardRoutes);
 app.route("/api/vehicle", vehicleRoutes);
 app.route("/api/fuel", fuelRoutes);
-
-
+app.route("/api/track-assets", trackAssetRoutes);
 
 
 
