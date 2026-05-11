@@ -926,9 +926,21 @@ export const getAttendancesWithSummary = async (c: Context) => {
         const hasPunchIn = !!attendance.punchIn;
         const hasPunchOut = !!attendance.punchOut;
 
-        if (hasPunchIn && hasPunchOut) {
+        if (attendance.status === "Absent") {
+          absent++;
+          finalAllUsers.push({
+            user: {
+              _id: user._id,
+              name: user.name,
+              email: user.email,
+              designation: user.designation,
+              company: user.companyId,
+            },
+            attendance,
+            status: "Absent",
+          });
+        } else if (hasPunchIn && hasPunchOut) {
           present++;
-
           finalAllUsers.push({
             user: {
               _id: user._id,
@@ -940,9 +952,21 @@ export const getAttendancesWithSummary = async (c: Context) => {
             attendance,
             status: "Present",
           });
+        } else if (attendance.status === "Half-Day") {
+          present++; // Or handle Half-Day separately if needed
+          finalAllUsers.push({
+            user: {
+              _id: user._id,
+              name: user.name,
+              email: user.email,
+              designation: user.designation,
+              company: user.companyId,
+            },
+            attendance,
+            status: "Half-Day",
+          });
         } else {
           notMarked++;
-
           finalAllUsers.push({
             user: {
               _id: user._id,
@@ -1096,6 +1120,7 @@ export const updateMultipleAttendanceStatus = async (c: Context) => {
     // ✅ prepare update data
     const updateData: any = {
       status,
+      isManual: true,
     };
 
     // ✅ if frontend sends punchIn/punchOut then use them
@@ -1119,19 +1144,52 @@ export const updateMultipleAttendanceStatus = async (c: Context) => {
       updateData.totalWorkedMinutes = 240;
     }
 
-    // ✅ update
-    const result = await Attendance.updateMany(
-      {
-        userId: { $in: userIds },
-        date: new Date(date),
-      },
-      { $set: updateData }
-    );
+    // ✅ Calculate totalWorkedMinutes if punchIn and punchOut are available
+    if (updateData.punchIn && updateData.punchOut) {
+      updateData.totalWorkedMinutes =
+        (updateData.punchOut.getTime() - updateData.punchIn.getTime()) / 60000;
+    }
+
+    // ✅ Fetch users to get their uniqueId (required for new attendance records)
+    const users = await User.find({ _id: { $in: userIds } }).select("uniqueId");
+    const userMap = new Map(users.map((u) => [u._id.toString(), u.uniqueId]));
+
+    const operations = userIds
+      .map((uid: string) => {
+        const uniqueId = userMap.get(uid);
+        if (uniqueId === undefined) return null;
+
+        return {
+          updateOne: {
+            filter: {
+              userId: uid,
+              date: new Date(date),
+            },
+            update: {
+              $set: updateData,
+              $setOnInsert: {
+                userId: uid,
+                date: new Date(date),
+                uniqueId: Number(uniqueId),
+              },
+            },
+            upsert: true,
+          },
+        };
+      })
+      .filter(Boolean) as any[];
+
+    if (operations.length === 0) {
+      return c.json({ message: "No valid users found" }, 404);
+    }
+
+    const result = await Attendance.bulkWrite(operations);
 
     return c.json({
       success: true,
       message: "Status updated successfully",
       modifiedCount: result.modifiedCount,
+      upsertedCount: result.upsertedCount,
     });
   } catch (error: any) {
     console.error(error);
