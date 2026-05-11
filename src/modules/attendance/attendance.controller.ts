@@ -939,7 +939,27 @@ export const getAttendancesWithSummary = async (c: Context) => {
             attendance,
             status: "Absent",
           });
-        } else if (hasPunchIn && hasPunchOut) {
+        } else if (
+          attendance.status === "WeeklyOff" ||
+          attendance.status === "Holiday"
+        ) {
+          // Do not increment present/absent/onLeave/notMarked
+          finalAllUsers.push({
+            user: {
+              _id: user._id,
+              name: user.name,
+              email: user.email,
+              designation: user.designation,
+              company: user.companyId,
+            },
+            attendance,
+            status: attendance.status,
+          });
+        } else if (
+          attendance.status === "Present" ||
+          attendance.status === "Half-Day" ||
+          (hasPunchIn && hasPunchOut)
+        ) {
           present++;
           finalAllUsers.push({
             user: {
@@ -950,20 +970,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
               company: user.companyId,
             },
             attendance,
-            status: "Present",
-          });
-        } else if (attendance.status === "Half-Day") {
-          present++; // Or handle Half-Day separately if needed
-          finalAllUsers.push({
-            user: {
-              _id: user._id,
-              name: user.name,
-              email: user.email,
-              designation: user.designation,
-              company: user.companyId,
-            },
-            attendance,
-            status: "Half-Day",
+            status: attendance.status || "Present",
           });
         } else {
           notMarked++;
@@ -1654,7 +1661,18 @@ export const getTodayAttendanceSummary = async (c: Context) => {
         const hasPunchIn = !!attendance.punchIn;
         const hasPunchOut = !!attendance.punchOut;
 
-        if (hasPunchIn && hasPunchOut) {
+        if (attendance.status === "Absent") {
+          absent++;
+        } else if (
+          attendance.status === "WeeklyOff" ||
+          attendance.status === "Holiday"
+        ) {
+          // Do not count in present/absent/onLeave/notMarked
+        } else if (
+          attendance.status === "Present" ||
+          attendance.status === "Half-Day" ||
+          (hasPunchIn && hasPunchOut)
+        ) {
           present++;
         } else {
           notMarked++;
