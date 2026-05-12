@@ -1531,6 +1531,7 @@ export const bulkRegister = async (c: Context) => {
           doj: row.doj,
           permanentAddress: row.permanentAddress,
           currentAddress: row.currentAddress,
+          fatherName: row.fatherName,
         });
 
         createdUsers.push(user);
