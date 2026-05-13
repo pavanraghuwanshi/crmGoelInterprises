@@ -1438,7 +1438,11 @@ export const bulkRegister = async (c: Context) => {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      workbook = XLSX.read(arrayBuffer, { type: "buffer" });
+      // workbook = XLSX.read(arrayBuffer, { type: "buffer" });
+      workbook = XLSX.read(arrayBuffer, { 
+        type: "buffer",
+        cellDates: true
+      });
     } catch (err) {
       return c.json(
         { message: "Invalid or unsupported file format" },
@@ -1466,7 +1470,11 @@ export const bulkRegister = async (c: Context) => {
     }
 
     // ✅ Excel → JSON
-    const usersData = XLSX.utils.sheet_to_json(sheet);
+    const usersData = XLSX.utils.sheet_to_json(sheet, {
+      raw: false,
+      dateNF: "yyyy-mm-dd"
+    });
+    // const usersData = XLSX.utils.sheet_to_json(sheet);
 
     if (!usersData.length) {
       return c.json({ message: "Excel is empty" }, 400);
@@ -1527,11 +1535,10 @@ export const bulkRegister = async (c: Context) => {
           // Other fields
           mobileNo: row.mobileNo,
           gender: row.gender,
-          dob: row.dob,
-          doj: row.doj,
+          dob: row.dob ? new Date(row.dob) : undefined,
+          doj: row.doj ? new Date(row.doj) : undefined,
           permanentAddress: row.permanentAddress,
           currentAddress: row.currentAddress,
-          fatherName: row.fatherName,
         });
 
         createdUsers.push(user);
