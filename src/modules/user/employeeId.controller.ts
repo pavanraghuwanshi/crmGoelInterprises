@@ -15,18 +15,39 @@ interface CreateEmployeeIdBody {
 
 
 
+// export const generateEmployeeId = async (prefix: string) => {
+//   // last record find karo
+//   const last = await EmployeeId.findOne({
+//     employeeId: new RegExp(`^${prefix}-`)
+//   }).sort({ createdAt: -1 });
+
+//   let nextNumber = 1;
+
+// if (last) {
+// const lastNumber = parseInt(last.employeeId.split("-")[1] ?? "0", 10);
+//   nextNumber = lastNumber + 1;
+// }
+
+//   return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
+// };
+
 export const generateEmployeeId = async (prefix: string) => {
-  // last record find karo
-  const last = await EmployeeId.findOne({
+  const employees = await EmployeeId.find({
     employeeId: new RegExp(`^${prefix}-`)
-  }).sort({ createdAt: -1 });
+  }).select("employeeId");
 
-  let nextNumber = 1;
+  let maxNumber = 0;
 
-if (last) {
-const lastNumber = parseInt(last.employeeId.split("-")[1] ?? "0", 10);
-  nextNumber = lastNumber + 1;
-}
+  for (const emp of employees) {
+    const parts = emp.employeeId.split("-");
+    const number = parseInt(parts[1] || "0", 10);
+
+    if (number > maxNumber) {
+      maxNumber = number;
+    }
+  }
+
+  const nextNumber = maxNumber + 1;
 
   return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
 };
