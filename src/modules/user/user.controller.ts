@@ -1424,7 +1424,6 @@ export const restoreUser = async (c: Context) => {
 
 //  bulk upload users from excel (not implemented yet, just a placeholder)
 
-
 export const bulkRegister = async (c: Context) => {
   try {
     const formData = await c.req.formData();
@@ -1438,10 +1437,10 @@ export const bulkRegister = async (c: Context) => {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      // workbook = XLSX.read(arrayBuffer, { type: "buffer" });
-      workbook = XLSX.read(arrayBuffer, { 
+
+      workbook = XLSX.read(arrayBuffer, {
         type: "buffer",
-        cellDates: true
+        cellDates: true,
       });
     } catch (err) {
       return c.json(
@@ -1472,15 +1471,15 @@ export const bulkRegister = async (c: Context) => {
     // ✅ Excel → JSON
     const usersData = XLSX.utils.sheet_to_json(sheet, {
       raw: false,
-      dateNF: "yyyy-mm-dd"
+      dateNF: "yyyy-mm-dd",
     });
-    // const usersData = XLSX.utils.sheet_to_json(sheet);
 
     if (!usersData.length) {
       return c.json({ message: "Excel is empty" }, 400);
     }
 
     const createdUsers = [];
+    const updatedUsers = [];
     const errors = [];
 
     const loggedInUser = c.get("user");
@@ -1499,40 +1498,111 @@ export const bulkRegister = async (c: Context) => {
           throw new Error("Invalid mobile");
         }
 
-        // ✅ Duplicate check (ONLY uniqueId now)
-        const duplicate = await checkDuplicateUser(
-          undefined,
-          row.uniqueId
-        );
-
-        if (duplicate === "uniqueId") {
-          throw new Error("Duplicate uniqueId");
-        }
-
         // ✅ ObjectId safe handling
         const safeObjectId = (val: any) =>
           val && val !== "" ? val : undefined;
 
+        // ✅ Check existing user by uniqueId
+        const existingUser = await User.findOne({
+          uniqueId: row.uniqueId,
+        });
+
+        // =====================================================
+        // ✅ UPDATE USER IF DUPLICATE FOUND
+        // =====================================================
+        if (existingUser) {
+          const updateData: any = {};
+
+          // 🔥 Only update fields coming from Excel
+          // ❌ Do not overwrite missing fields with null
+
+          if (row.name !== undefined) updateData.name = row.name;
+
+          // ✅ Added otherName
+          if (row.otherName !== undefined)
+            updateData.otherName = row.otherName;
+
+          // ✅ Added fatherName
+          if (row.fatherName !== undefined)
+            updateData.fatherName = row.fatherName;
+
+          if (row.mobileNo !== undefined)
+            updateData.mobileNo = row.mobileNo;
+
+          if (row.gender !== undefined)
+            updateData.gender = row.gender;
+
+          if (row.dob !== undefined)
+            updateData.dob = row.dob
+              ? new Date(row.dob)
+              : existingUser.dob;
+
+          if (row.doj !== undefined)
+            updateData.doj = row.doj
+              ? new Date(row.doj)
+              : existingUser.doj;
+
+          if (row.permanentAddress !== undefined)
+            updateData.permanentAddress =
+              row.permanentAddress;
+
+          if (row.currentAddress !== undefined)
+            updateData.currentAddress =
+              row.currentAddress;
+
+          if (row.companyId !== undefined)
+            updateData.companyId = safeObjectId(
+              row.companyId
+            );
+
+          if (row.attendancePolicyId !== undefined)
+            updateData.attendancePolicyId =
+              safeObjectId(row.attendancePolicyId);
+
+          if (row.payrollPolicyId !== undefined)
+            updateData.payrollPolicyId =
+              safeObjectId(row.payrollPolicyId);
+
+          await User.findByIdAndUpdate(
+            existingUser._id,
+            {
+              $set: updateData,
+            },
+            { new: true }
+          );
+
+          updatedUsers.push(existingUser);
+
+          continue;
+        }
+
+        // =====================================================
+        // ✅ CREATE NEW USER
+        // =====================================================
+
         const user = await User.create({
           name: row.name,
 
-          // ❌ email removed
-          // ❌ password removed
+          // ✅ Added otherName
+          otherName: row.otherName,
 
-          role: "user", // always default
+          // ✅ Added fatherName
+          fatherName: row.fatherName,
+
+          role: "user",
 
           createdBy: loggedInUser.id,
 
           uniqueId: row.uniqueId,
 
-          // 🔥 Optional ObjectIds (ONLY allowed ones)
           companyId: safeObjectId(row.companyId),
-          attendancePolicyId: safeObjectId(row.attendancePolicyId),
-          payrollPolicyId: safeObjectId(row.payrollPolicyId),
+          attendancePolicyId: safeObjectId(
+            row.attendancePolicyId
+          ),
+          payrollPolicyId: safeObjectId(
+            row.payrollPolicyId
+          ),
 
-          // ❌ removed designationId, departmentId
-
-          // Other fields
           mobileNo: row.mobileNo,
           gender: row.gender,
           dob: row.dob ? new Date(row.dob) : undefined,
@@ -1553,6 +1623,7 @@ export const bulkRegister = async (c: Context) => {
     return c.json({
       message: "Bulk upload completed",
       successCount: createdUsers.length,
+      updatedCount: updatedUsers.length,
       errorCount: errors.length,
       errors,
     });
