@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { register, login, getUsers, updateUser, getUserById, deleteUser, getUsersDropdown, getUsersStats, getDeletedUsers, bulkRegister, genderDistributionWithFilter, deleteMultipleUsers } from "../user/user.controller.ts";
+import { register, login, getUsers, updateUser, getUserById, deleteUser, getUsersDropdown, getUsersStats, getDeletedUsers, bulkRegister, genderDistributionWithFilter, deleteMultipleUsers, restoreUser } from "../user/user.controller.ts";
 import { verifyToken } from "../../middleware/auth.middleware.ts";
 
 const authRoutes = new Hono();
@@ -20,6 +20,8 @@ authRoutes.put("/update/:id", updateUser);
 authRoutes.delete("/delete/:id", deleteUser);
 authRoutes.post("/delete-multiple-users", deleteMultipleUsers);
 authRoutes.get("/get-deleted-users", getDeletedUsers);
+
+authRoutes.put("/restore-user/:id", restoreUser);
 
 authRoutes.post("/bulk-upload", verifyToken, bulkRegister);
 

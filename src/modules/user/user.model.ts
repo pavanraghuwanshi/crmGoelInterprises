@@ -89,16 +89,12 @@ export interface IUser extends Document {
       file?: string;
     }[];
   notes?: string;
-  designationId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Designation"
-    },
-  departmentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Department"
-    },
+    designationId?: Types.ObjectId;
+    departmentId?: Types.ObjectId;
     attendancePolicyStartDate?: Date;
     attendancePolicyEndDate?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 // 📦 Schema

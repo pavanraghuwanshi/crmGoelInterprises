@@ -1401,18 +1401,47 @@ export const restoreUser = async (c: Context) => {
   try {
     const id = c.req.param("id");
 
-    const user = await DeletedUser.findById(id);
+    // get deleted user
+    const deletedUser: any = await DeletedUser.findById(id).lean();
 
-    if (!user) {
-      return c.json({ message: "Deleted user not found" }, 404);
+    if (!deletedUser) {
+      return c.json(
+        {
+          message: "Deleted user not found",
+        },
+        404
+      );
     }
 
-    // await User.create(user.toObject());
+    // remove unwanted mongoose fields
+    delete deletedUser._id;
+    delete deletedUser.__v;
+    delete deletedUser.createdAt;
+    delete deletedUser.updatedAt;
+
+    // restore user
+    const restoredUser = await User.create(deletedUser);
+
+    // remove from deleted collection
     await DeletedUser.findByIdAndDelete(id);
 
-    return c.json({ message: "User restored successfully" }, 200);
+    return c.json(
+      {
+        message: "User restored successfully",
+        data: restoredUser,
+      },
+      200
+    );
   } catch (error) {
-    return c.json({ message: "Error restoring user" }, 500);
+    console.error("Restore User Error:", error);
+
+    return c.json(
+      {
+        message: "Error restoring user",
+        error,
+      },
+      500
+    );
   }
 };
 
