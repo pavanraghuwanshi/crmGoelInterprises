@@ -1022,9 +1022,20 @@ export const getAttendancesWithSummary = async (c: Context) => {
       filteredUserIds.includes(u.user._id.toString())
     );
 
+    // if (status) {
+    //   finalFiltered = finalFiltered.filter(
+    //     (u) => u.status === status
+    //   );
+    // }
+
     if (status) {
-      finalFiltered = finalFiltered.filter(
-        (u) => u.status === status
+      const statuses =
+        status === "Present"
+          ? ["Present", "Half-Day"]
+          : [status];
+    
+      finalFiltered = finalFiltered.filter((u) =>
+        statuses.includes(u.status)
       );
     }
 
