@@ -115,7 +115,7 @@ export const getRosterUsers = async (c: Context) => {
       .select("-password") // hide password
       .skip(skip)
       .limit(limit)
-      .sort({ createdAt: -1 });
+      .sort({ updatedAt: -1 });
 
     // ✅ total count
     const total = await User.countDocuments(filter);
