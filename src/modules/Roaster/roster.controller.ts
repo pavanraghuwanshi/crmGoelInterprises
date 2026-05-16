@@ -15,14 +15,6 @@ export const assignAttendancePolicyBulk = async (c: Context) => {
       return c.json({ message: "userIds array is required" }, 400);
     }
 
-    // if (!attendancePolicyId) {
-    //   return c.json({ message: "attendancePolicyId is required" }, 400);
-    // }
-
-    // if (!startDate || !endDate) {
-    //   return c.json({ message: "startDate and endDate are required" }, 400);
-    // }
-
     // ✅ logged in user
     const loggedInUser = c.get("user");
 
@@ -46,6 +38,7 @@ export const assignAttendancePolicyBulk = async (c: Context) => {
           attendancePolicyId: attendancePolicyId || null,
           attendancePolicyStartDate: startDate ? new Date(startDate) : null,
           attendancePolicyEndDate: endDate ? new Date(endDate) : null,
+          updatedAt: new Date(),
         }
       }
     );
