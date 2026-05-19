@@ -775,7 +775,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
           });
         } else if (
           attendance.status === "Present" ||
-          attendance.status === "Half-Day" ||
+          // attendance.status === "Half-Day" ||
           (hasPunchIn && hasPunchOut)
         ) {
           present++;
