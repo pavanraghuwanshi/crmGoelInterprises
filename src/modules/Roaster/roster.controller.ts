@@ -130,3 +130,67 @@ export const getRosterUsers = async (c: Context) => {
     return c.json({ message: "Internal Server Error" }, 500);
   }
 };
+
+
+//  24 hour sift create
+
+export const update24HourShiftBulk = async (c: Context) => {
+  try {
+    const body = await c.req.json();
+
+    const { userIds, is24HourShift } = body;
+
+    // ✅ validation
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return c.json({ message: "userIds array is required" }, 400);
+    }
+
+    // ✅ logged in user
+    const loggedInUser = c.get("user");
+
+    if (!loggedInUser) {
+      return c.json({ message: "Unauthorized" }, 401);
+    }
+
+    // ✅ only admin/hr allowed
+    if (!["admin", "hr"].includes(loggedInUser.role)) {
+      return c.json({ message: "Forbidden" }, 403);
+    }
+
+    // ✅ convert to ObjectIds
+    const objectIds = userIds.map(
+      (id: string) => new Types.ObjectId(id)
+    );
+
+    // ✅ bulk update
+    const result = await User.updateMany(
+      {
+        _id: { $in: objectIds },
+      },
+      {
+        $set: {
+          is24HourShift: is24HourShift === true,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    return c.json(
+      {
+        message: "24 hour shift updated successfully",
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount,
+      },
+      200
+    );
+  } catch (error) {
+    console.error("24 Hour Shift Update Error:", error);
+
+    return c.json(
+      {
+        message: "Internal Server Error",
+      },
+      500
+    );
+  }
+};

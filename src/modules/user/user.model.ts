@@ -95,6 +95,7 @@ export interface IUser extends Document {
     attendancePolicyEndDate?: Date;
     createdAt?: Date;
     updatedAt?: Date;
+    is24HourShift?:Boolean;
 }
 
 // 📦 Schema
@@ -241,7 +242,11 @@ const userSchema = new Schema<IUser>(
       ref: "Department"
     },
     attendancePolicyStartDate: Date,
-    attendancePolicyEndDate: Date
+    attendancePolicyEndDate: Date,
+    is24HourShift: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
