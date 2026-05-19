@@ -688,7 +688,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     // ===== ALL USERS (FOR SUMMARY) =====
     const allUsers = await User.find(baseUserFilter)
-      .select("_id name email companyId designation is24HourShift")
+      .select("_id name email companyId designation")
       .populate("companyId", "name");
 
     const allUserIds = allUsers.map((u) => u._id.toString());
@@ -696,7 +696,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     // ===== FILTERED USERS (FOR DATA) =====
     const filteredUsers = await User.find(searchFilter)
-      .select("_id name email companyId designation is24HourShift")
+      .select("_id name email companyId designation")
       .populate("companyId", "name");
 
     const filteredUserIds = filteredUsers.map((u) =>
@@ -776,8 +776,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
         } else if (
           attendance.status === "Present" ||
           attendance.status === "Half-Day" ||
-          (hasPunchIn && hasPunchOut) ||
-          (user.is24HourShift && (hasPunchIn || hasPunchOut))
+          (hasPunchIn && hasPunchOut)
         ) {
           present++;
           finalAllUsers.push({
