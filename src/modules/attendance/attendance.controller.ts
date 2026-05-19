@@ -433,10 +433,57 @@ export const uploadBiometricData = async (c: Context) => {
         const punchIn =
           punches.length > 0 ? punches[0] : null;
 
-        const punchOut =
-          punches.length > 1
-            ? punches[punches.length - 1]
-            : null;
+        // const punchOut =
+        //   punches.length > 1
+        //     ? punches[punches.length - 1]
+        //     : null;
+
+
+
+        //  new added section start here 
+
+        const currentUser = users.find(
+          (u: any) => u.uniqueId === enNo
+        );
+
+              let punchOut =
+        punches.length > 1
+          ? punches[punches.length - 1]
+          : null;
+
+      // ✅ 24 HOUR SHIFT LOGIC
+      if (
+        !punchOut &&
+        currentUser?.is24HourShift
+      ) {
+        const nextDate = new Date(dateKey);
+
+        nextDate.setDate(nextDate.getDate() + 1);
+
+        const nextDateKey =
+          nextDate.getFullYear() +
+          "-" +
+          String(nextDate.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(nextDate.getDate()).padStart(2, "0");
+
+        const nextDayPunches =
+          datesObj.get(nextDateKey);
+
+        if (
+          nextDayPunches &&
+          nextDayPunches.length > 0
+        ) {
+          nextDayPunches.sort(
+            (a, b) => a.getTime() - b.getTime()
+          );
+
+          // punchOut = nextDayPunches[0];
+          punchOut = nextDayPunches.shift() || null;
+        }
+      }
+
+//  end here 
 
         // ===== STATUS =====
         let status: "Present" | "Absent" | "Half-Day" =
