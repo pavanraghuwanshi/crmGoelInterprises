@@ -627,188 +627,6 @@ export const getAttendances = async (c: Context) => {
 
 // ===== GET ATTENDANCES (DEFAULT TODAY) WITH DATE FILTER + SUMMARY =====
 
-// export const getAttendancesWithSummary = async (c: Context) => {
-//   try {
-//     const {
-//       page = "1",
-//       limit = "10",
-//       status,
-//       userId,
-//       search,
-//       startDate,
-//       endDate,
-//       companyId,
-//     } = c.req.query();
-
-//     const pageNum = parseInt(page);
-//     const limitNum = parseInt(limit);
-
-//     // ===== DATE RANGE =====
-//     let start = startDate ? new Date(startDate) : new Date();
-//     start.setHours(0, 0, 0, 0);
-
-//     let end = endDate ? new Date(endDate) : new Date(start);
-//     end.setHours(23, 59, 59, 999);
-
-//     // ===== USER FILTER (NO ADMIN) =====
-//     const baseUserFilter: any = {
-//       role: { $ne: "admin" },
-//     };
-
-//     if (companyId) {
-//       baseUserFilter.companyId = new Types.ObjectId(companyId);
-//     }
-
-//     // ===== SEARCH FILTER =====
-//     const searchFilter: any = { ...baseUserFilter };
-
-//     if (search) {
-//       searchFilter.$or = [
-//         { name: { $regex: search, $options: "i" } },
-//         { email: { $regex: search, $options: "i" } },
-//       ];
-//     }
-
-//     if (userId) {
-//       searchFilter._id = new Types.ObjectId(userId);
-//     }
-
-//     // ===== ALL USERS (FOR SUMMARY) =====
-//     const allUsers = await User.find(baseUserFilter) .select("_id name email companyId designation").populate("companyId", "name");
-//     const allUserIds = allUsers.map((u) => u._id.toString());
-
-//     const totalUsers = allUsers.length;
-
-//     // ===== FILTERED USERS (FOR DATA) =====
-//     const filteredUsers = await User.find(searchFilter).select( "_id name email companyId designation").populate("companyId", "name");;
-
-//     const filteredUserIds = filteredUsers.map((u) =>
-//       u._id.toString()
-//     );
-
-//     // ===== ATTENDANCE =====
-//     const attendanceDocs = await Attendance.find({
-//       userId: { $in: allUserIds },
-//       date: { $gte: start, $lte: end },
-//     });
-
-//     const attendanceMap = new Map();
-
-//     attendanceDocs.forEach((a) => {
-//       attendanceMap.set(a.userId.toString(), a);
-//     });
-
-//     // ===== LEAVES =====
-//     const leaves = await Leave.find({
-//       userId: { $in: allUserIds },
-//       status: "Approved",
-//       fromDate: { $lte: end },
-//       toDate: { $gte: start },
-//     });
-
-//     const leaveSet = new Set(
-//       leaves.map((l) => l.userId.toString())
-//     );
-
-//     // ===== SUMMARY (IMPORTANT: NO STATUS FILTER HERE) =====
-//     let present = 0;
-//     let absent = 0;
-//     let onLeave = 0;
-//     let notMarked = 0;
-
-//     const finalAllUsers: any[] = [];
-
-//     for (const user of allUsers) {
-//       const uid = user._id.toString();
-//       const attendance = attendanceMap.get(uid);
-
-//       if (attendance) {
-//         if (attendance.status === "Present") present++;
-//         else if (attendance.status === "Absent") absent++;
-
-//       finalAllUsers.push({
-//         user: {
-//           _id: user._id,
-//           name: user.name,
-//           email: user.email,
-//           designation:user.designation,
-//           company: user.companyId, // populated object
-//         },
-//         attendance,
-//         status: attendance.status,
-//       });
-//       } else if (leaveSet.has(uid)) {
-//         onLeave++;
-//         finalAllUsers.push({
-//           user: {
-//             _id: user._id,
-//             name: user.name,
-//             designation:user.designation,
-//             email: user.email,
-//             company: user.companyId,
-//           },
-//           attendance: null,
-//           status: "On Leave",
-//         });
-//       } else {
-//         notMarked++;
-//       finalAllUsers.push({
-//         user: {
-//           _id: user._id,
-//           name: user.name,
-//           designation:user.designation,
-//           email: user.email,
-//           company: user.companyId, // populated company object
-//         },
-//         attendance: null,
-//         status: "Not Marked",
-//       });
-//       }
-//     }
-
-//     // ===== DATA FILTER (STATUS APPLIES HERE ONLY) =====
-//     let finalFiltered = finalAllUsers.filter((u) =>
-//       filteredUserIds.includes(u.user._id.toString())
-//     );
-
-//     if (status) {
-//       finalFiltered = finalFiltered.filter(
-//         (u) => u.status === status
-//       );
-//     }
-
-//     // ===== PAGINATION =====
-//     const total = finalFiltered.length;
-
-//     const paginated = finalFiltered.slice(
-//       (pageNum - 1) * limitNum,
-//       pageNum * limitNum
-//     );
-
-//     // ===== RESPONSE =====
-//     return c.json(
-//       {
-//         summary: {
-//           totalUsers,
-//           present,
-//           absent,
-//           onLeave,
-//           notMarked,
-//         },
-//         data: paginated,
-//         total,
-//         page: pageNum,
-//         limit: limitNum,
-//         startDate: start,
-//         endDate: end,
-//       },
-//       200
-//     );
-//   } catch (error: any) {
-//     console.error(error);
-//     return c.json({ message: error.message }, 500);
-//   }
-// };
 
 export const getAttendancesWithSummary = async (c: Context) => {
   try {
@@ -870,7 +688,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     // ===== ALL USERS (FOR SUMMARY) =====
     const allUsers = await User.find(baseUserFilter)
-      .select("_id name email companyId designation")
+      .select("_id name email companyId designation is24HourShift")
       .populate("companyId", "name");
 
     const allUserIds = allUsers.map((u) => u._id.toString());
@@ -878,7 +696,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     // ===== FILTERED USERS (FOR DATA) =====
     const filteredUsers = await User.find(searchFilter)
-      .select("_id name email companyId designation")
+      .select("_id name email companyId designation is24HourShift")
       .populate("companyId", "name");
 
     const filteredUserIds = filteredUsers.map((u) =>
@@ -958,7 +776,8 @@ export const getAttendancesWithSummary = async (c: Context) => {
         } else if (
           attendance.status === "Present" ||
           attendance.status === "Half-Day" ||
-          (hasPunchIn && hasPunchOut)
+          (hasPunchIn && hasPunchOut) ||
+          (user.is24HourShift && (hasPunchIn || hasPunchOut))
         ) {
           present++;
           finalAllUsers.push({
