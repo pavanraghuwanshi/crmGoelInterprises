@@ -1546,7 +1546,6 @@ export const getTodayAttendanceSummary = async (c: Context) => {
           // Do not count in present/absent/onLeave/notMarked
         } else if (
           attendance.status === "Present" ||
-          attendance.status === "Half-Day" ||
           (hasPunchIn && hasPunchOut)
         ) {
           present++;
