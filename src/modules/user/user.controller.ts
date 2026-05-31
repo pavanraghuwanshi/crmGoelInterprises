@@ -897,7 +897,8 @@ export const getUsersDropdown = async (c: Context) => {
         $project: {
           _id: 1,
           name: 1,
-          employeeId: "$employeeData.employeeId"
+          employeeId: "$employeeData.employeeId",
+          uniqueId: 1
         }
       },
       { $sort: { name: 1 } },
