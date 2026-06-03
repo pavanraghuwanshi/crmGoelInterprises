@@ -325,7 +325,18 @@ export const uploadBiometricData = async (c: Context) => {
         let overtimeHours = 0;
         let overtimePay = 0;
 
-        const requiredMinutes = 8 * 60;
+        // const requiredMinutes = 8 * 60;
+        const shiftInDate = new Date(dateKey);
+      shiftInDate.setHours(shiftInHours, shiftInMinutes, 0, 0);
+
+      const shiftOutDate = new Date(dateKey);
+      shiftOutDate.setHours(shiftOutHours, shiftOutMinutes, 0, 0);
+
+      if (shiftOutDate <= shiftInDate) {
+        shiftOutDate.setDate(shiftOutDate.getDate() + 1);
+      }
+
+      const requiredMinutes = (shiftOutDate.getTime() - shiftInDate.getTime()) / 60000;
 
         if (punchIn && punchOut) {
           totalWorkedMinutes =
