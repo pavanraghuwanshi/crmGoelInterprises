@@ -4,6 +4,28 @@ import path from "path";
 import fs from "fs";
 import mongoose from "mongoose";
 
+const calculateFuelAverage = async (vehicleId: any, currentOdometer: number, totalFuel: number, currentEntryId?: string) => {
+  try {
+    const query: any = { vehicleId };
+    if (currentEntryId) {
+      query._id = { $ne: currentEntryId };
+    }
+    
+    const prevEntry = await Fuel.findOne(query)
+      .sort({ odometer: -1 });
+      
+    if (prevEntry && prevEntry.odometer < currentOdometer) {
+      const distance = currentOdometer - prevEntry.odometer;
+      if (totalFuel > 0) {
+        return parseFloat((distance / totalFuel).toFixed(2));
+      }
+    }
+  } catch (error) {
+    console.error("Error calculating fuel average:", error);
+  }
+  return 0;
+};
+
 export const createFuelEntry = async (c: Context) => {
   try {
     const user = c.get("user");
@@ -20,6 +42,9 @@ export const createFuelEntry = async (c: Context) => {
       fuelData.fuelType = formData.get("fuelType");
       fuelData.ratePerLtr = Number(formData.get("ratePerLtr"));
       fuelData.totalAmount = Number(formData.get("totalAmount"));
+      if (formData.has("totalFuel")) {
+        fuelData.totalFuel = Number(formData.get("totalFuel"));
+      }
       if (formData.has("fillingDate")) {
         fuelData.fillingDate = new Date(formData.get("fillingDate") as string);
       }
@@ -46,8 +71,16 @@ export const createFuelEntry = async (c: Context) => {
       fuelData = await c.req.json();
     }
 
+    const totalFuel = fuelData.totalFuel !== undefined && !isNaN(fuelData.totalFuel) && fuelData.totalFuel > 0
+      ? fuelData.totalFuel
+      : (fuelData.ratePerLtr > 0 ? parseFloat((fuelData.totalAmount / fuelData.ratePerLtr).toFixed(2)) : 0);
+
+    const average = await calculateFuelAverage(fuelData.vehicleId, fuelData.odometer, totalFuel);
+
     const newFuelEntry = new Fuel({
       ...fuelData,
+      average,
+      totalFuel,
       createdBy: user.id,
     });
 
@@ -137,6 +170,8 @@ export const getFuelEntries = async (c: Context) => {
                 totalAmount: 1,
                 fillingDate: 1,
                 images: 1,
+                average: 1,
+                totalFuel: 1,
                 createdBy: {
                   _id: "$userDetails._id",
                   name: "$userDetails.name",
@@ -198,6 +233,7 @@ export const updateFuelEntry = async (c: Context) => {
       if (formData.has("fuelType")) updateData.fuelType = formData.get("fuelType");
       if (formData.has("ratePerLtr")) updateData.ratePerLtr = Number(formData.get("ratePerLtr"));
       if (formData.has("totalAmount")) updateData.totalAmount = Number(formData.get("totalAmount"));
+      if (formData.has("totalFuel")) updateData.totalFuel = Number(formData.get("totalFuel"));
       if (formData.has("fillingDate")) updateData.fillingDate = new Date(formData.get("fillingDate") as string);
 
       // Handle image updates
@@ -223,9 +259,30 @@ export const updateFuelEntry = async (c: Context) => {
       updateData = await c.req.json();
     }
 
+    const existingEntry = await Fuel.findById(id);
+    if (!existingEntry) return c.json({ error: "Fuel entry not found" }, 404);
+
+    const mergedData = {
+      vehicleId: updateData.vehicleId || existingEntry.vehicleId,
+      odometer: updateData.odometer !== undefined ? updateData.odometer : existingEntry.odometer,
+      ratePerLtr: updateData.ratePerLtr !== undefined ? updateData.ratePerLtr : existingEntry.ratePerLtr,
+      totalAmount: updateData.totalAmount !== undefined ? updateData.totalAmount : existingEntry.totalAmount,
+      totalFuel: updateData.totalFuel !== undefined ? updateData.totalFuel : existingEntry.totalFuel,
+    };
+
+    const totalFuel = mergedData.totalFuel !== undefined && !isNaN(mergedData.totalFuel) && mergedData.totalFuel > 0
+      ? mergedData.totalFuel
+      : (mergedData.ratePerLtr > 0 ? parseFloat((mergedData.totalAmount / mergedData.ratePerLtr).toFixed(2)) : 0);
+
+    const average = await calculateFuelAverage(mergedData.vehicleId, mergedData.odometer, totalFuel, id);
+
     const { $push, ...setFields } = updateData;
     const mongoUpdate: any = {};
-    if (Object.keys(setFields).length > 0) mongoUpdate.$set = setFields;
+    if (Object.keys(setFields).length > 0) {
+      mongoUpdate.$set = { ...setFields, average, totalFuel };
+    } else {
+      mongoUpdate.$set = { average, totalFuel };
+    }
     if ($push) mongoUpdate.$push = $push;
 
     const updatedEntry = await Fuel.findByIdAndUpdate(

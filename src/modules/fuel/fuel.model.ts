@@ -8,6 +8,8 @@ export interface IFuel extends Document {
   totalAmount: number;
   fillingDate: Date;
   images: string[];
+  average?: number;
+  totalFuel?: number;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +44,14 @@ const FuelSchema: Schema = new Schema(
       default: Date.now,
     },
     images: [{ type: String }],
+    average: {
+      type: Number,
+      default: 0
+    },
+    totalFuel: {
+      type: Number,
+      default: 0
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
