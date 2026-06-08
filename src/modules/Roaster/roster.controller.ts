@@ -35,7 +35,7 @@ export const assignAttendancePolicyBulk = async (c: Context) => {
       { _id: { $in: objectIds } },
       {
         $set: {
-          attendancePolicyId: attendancePolicyId || null,
+          attendancePolicyId: attendancePolicyId ,
           attendancePolicyStartDate: startDate ? new Date(startDate) : null,
           attendancePolicyEndDate: endDate ? new Date(endDate) : null,
           updatedAt: new Date(),
