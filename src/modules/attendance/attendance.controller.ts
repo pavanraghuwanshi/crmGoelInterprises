@@ -261,8 +261,7 @@ export const uploadBiometricData = async (c: Context) => {
       for (const [dateKey, punches] of datesObj.entries()) {
         punches.sort((a, b) => a.getTime() - b.getTime());
 
-        const punchIn =
-          punches.length > 0 ? punches[0] : null;
+        let punchIn =  punches.length > 0 ? punches[0] : null;
 
         // const punchOut =
         //   punches.length > 1
@@ -281,6 +280,16 @@ export const uploadBiometricData = async (c: Context) => {
         punches.length > 1
           ? punches[punches.length - 1]
           : null;
+
+      if (
+        !currentUser?.is24HourShift &&
+        punches.length === 1 &&
+        shiftInHours >= 5 &&
+        shiftInHours <= 12
+      ) {
+        punchOut = punches[0];
+        punchIn = null;
+      }
 
       // ✅ 24 HOUR SHIFT LOGIC
       if (
