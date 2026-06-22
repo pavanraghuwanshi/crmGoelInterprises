@@ -605,6 +605,7 @@ export const updateUser = async (c: Context) => {
         uniqueId !== undefined ? Number(uniqueId) : undefined,
         id
       );
+
       if (duplicate === "email") {
         return c.json({ message: "Email already exists" }, 400);
       }
@@ -713,7 +714,17 @@ export const updateUser = async (c: Context) => {
 
     // ---------------- DYNAMIC UPDATE ----------------
 
+    const skipDynamicFields = [
+      "password",
+      "profileImage",
+      "otherDocuments",
+      "otherDocumentsTitle",
+      "uniqueId",
+    ];
+
     Object.keys(body).forEach((key) => {
+      if (skipDynamicFields.includes(key)) return;
+
       if (updatableFields.includes(key)) {
         user.set(key, body[key]);
       }
