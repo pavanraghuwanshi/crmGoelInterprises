@@ -917,7 +917,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     // ===== ALL USERS (FOR SUMMARY) =====
     const allUsers = await User.find(baseUserFilter)
-      .select("_id name email companyId designation uniqueId employeeObjId")
+      .select("_id name email companyId designation uniqueId employeeObjId otherName department")
       .populate("companyId", "name")
       .populate("employeeObjId", "employeeId");
 
@@ -926,7 +926,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     // ===== FILTERED USERS (FOR DATA) =====
     const filteredUsers = await User.find(searchFilter)
-      .select("_id name email companyId designation uniqueId employeeObjId")
+      .select("_id name email companyId designation uniqueId employeeObjId otherName department")
       .populate("companyId", "name")
       .populate("employeeObjId", "employeeId");
 
@@ -1004,6 +1004,8 @@ export const getAttendancesWithSummary = async (c: Context) => {
               company: user.companyId,
               uniqueId: user.uniqueId,
               employeeId: (user.employeeObjId as any)?.employeeId || null,
+              otherName: user.otherName,
+              department: user.department,
             },
             attendance,
             status: attendance.status,
@@ -1023,6 +1025,8 @@ export const getAttendancesWithSummary = async (c: Context) => {
               company: user.companyId,
               uniqueId: user.uniqueId,
               employeeId: (user.employeeObjId as any)?.employeeId || null,
+              otherName: user.otherName,
+              department: user.department,
             },
             attendance,
             status: attendance.status || "Present",
@@ -1038,6 +1042,8 @@ export const getAttendancesWithSummary = async (c: Context) => {
               company: user.companyId,
               uniqueId: user.uniqueId,
               employeeId: (user.employeeObjId as any)?.employeeId || null,
+              otherName: user.otherName,
+              department: user.department,
             },
             attendance,
             status: "Not Marked",
@@ -1055,6 +1061,8 @@ export const getAttendancesWithSummary = async (c: Context) => {
             company: user.companyId,
             uniqueId: user.uniqueId,
             employeeId: (user.employeeObjId as any)?.employeeId || null,
+            otherName: user.otherName,
+            department: user.department,
           },
           attendance: null,
           status: "On Leave",
@@ -1071,6 +1079,8 @@ export const getAttendancesWithSummary = async (c: Context) => {
             company: user.companyId,
             uniqueId: user.uniqueId,
             employeeId: (user.employeeObjId as any)?.employeeId || null,
+            otherName: user.otherName,
+            department: user.department,
           },
           attendance: null,
           status: "Absent",

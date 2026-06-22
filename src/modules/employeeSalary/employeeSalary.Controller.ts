@@ -88,7 +88,7 @@ export const getEmployeeSalaries = async (c: Context) => {
 
     // ===== GET DATA =====
     const data = await EmployeeSalary.find(filter)
-      .populate("userId", "name email")
+      .populate("userId", "name email otherName department")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);

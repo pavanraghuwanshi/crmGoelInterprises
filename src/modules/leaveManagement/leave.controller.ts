@@ -139,7 +139,7 @@ export const getLeaves = async (c: Context) => {
 
     // 📦 Data
     const leaves = await Leave.find(filter)
-      .populate("userId", "name email uniqueId")
+      .populate("userId", "name email uniqueId otherName department")
       .sort({ createdAt: -1 })
       .lean();
 
