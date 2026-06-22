@@ -6,6 +6,7 @@ export interface IAttendancePolicy extends Document {
   shiftOutTime: string; // e.g., "18:00"
   overtimeThresholdMins: number; // e.g., 30
   overtimeHourlyRate: number; // e.g., 100
+  attendanceBufferMins: number; // e.g., 15
   createdBy: Types.ObjectId;
 }
 
@@ -15,6 +16,7 @@ const attendancePolicySchema = new Schema<IAttendancePolicy>({
   shiftOutTime: { type: String, required: true },
   overtimeThresholdMins: { type: Number, default: 30 },
   overtimeHourlyRate: { type: Number, required: true },
+  attendanceBufferMins: { type: Number, default: 0 },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
 }, { timestamps: true });
 

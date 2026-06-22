@@ -346,13 +346,14 @@ export const uploadBiometricData = async (c: Context) => {
       }
 
       const requiredMinutes = (shiftOutDate.getTime() - shiftInDate.getTime()) / 60000;
+      const bufferMins = policy.attendanceBufferMins || 0;
 
         if (punchIn && punchOut) {
           totalWorkedMinutes =
             (punchOut.getTime() - punchIn.getTime()) /
             60000;
 
-          if (totalWorkedMinutes >= requiredMinutes) {
+          if (totalWorkedMinutes >= (requiredMinutes - bufferMins)) {
             status = "Present";
 
             const isHoliday = holidaySet.has(dateKey);
