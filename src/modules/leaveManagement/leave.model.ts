@@ -4,6 +4,7 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 export interface ILeave extends Document {
   userId: Types.ObjectId;
   companyId: Types.ObjectId;
+  name: string;
 
   fromDate: Date;
   toDate: Date;
@@ -27,6 +28,7 @@ const leaveSchema = new Schema<ILeave>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
+    name: { type: String, required: true },
 
     fromDate: { type: Date, required: true },
     toDate: { type: Date, required: true },
