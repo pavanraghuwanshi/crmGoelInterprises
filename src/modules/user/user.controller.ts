@@ -552,6 +552,7 @@ export const getUserById = async (c: Context) => {
 
 // ---------------- UPDATE USER ----------------
 
+
 export const updateUser = async (c: Context) => {
   try {
     const id = c.req.param("id");
@@ -700,8 +701,14 @@ export const updateUser = async (c: Context) => {
         });
       }
 
-      user.otherDocuments = otherDocuments;
-      user.markModified("otherDocuments");
+      if (otherDocuments.length > 0) {
+        user.otherDocuments = [
+          ...(user.otherDocuments || []),
+          ...otherDocuments,
+        ];
+
+        user.markModified("otherDocuments");
+      }
     }
 
     // ---------------- DYNAMIC UPDATE ----------------
@@ -744,6 +751,198 @@ export const updateUser = async (c: Context) => {
     );
   }
 };
+// export const updateUser = async (c: Context) => {
+//   try {
+//     const id = c.req.param("id");
+
+//     // 🔥 formData (same as register)
+//     const formData = await c.req.formData();
+//     const body = Object.fromEntries(formData.entries());
+
+//     const user = await User.findById(id);
+//     if (!user) {
+//       return c.json({ message: "User not found" }, 404);
+//     }
+
+//     // ---------------- HELPERS ----------------
+//     const toNumber = (val: any): number | undefined => {
+//       if (val === undefined || val === null || val === "") return undefined;
+//       const num = Number(val);
+//       return isNaN(num) ? undefined : num;
+//     };
+
+//     // ---------------- ALLOWED FIELDS ----------------
+//     const allowedFields = Object.keys(User.schema.paths);
+//     const restrictedFields = ["_id", "__v", "createdAt", "updatedAt"];
+//     const updatableFields = allowedFields.filter(
+//       (f) => !restrictedFields.includes(f)
+//     );
+
+//     // ---------------- VALIDATIONS ----------------
+
+//     // ✅ Email
+//     if (body.email !== undefined) {
+//       const email = body.email.toString().trim();
+//       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+//       if (!emailRegex.test(email)) {
+//         return c.json({ message: "Invalid email format" }, 400);
+//       }
+
+//       const uniqueId =
+//         body.uniqueId !== undefined
+//           ? toNumber(body.uniqueId)
+//           : user.uniqueId;
+
+//       if (body.uniqueId !== undefined && uniqueId === undefined) {
+//         return c.json({ message: "Unique ID must be a number" }, 400);
+//       }
+
+//       const duplicate = await checkDuplicateUser(
+//         email,
+//         uniqueId !== undefined ? Number(uniqueId) : undefined,
+//         id
+//       );
+//       if (duplicate === "email") {
+//         return c.json({ message: "Email already exists" }, 400);
+//       }
+
+//       if (duplicate === "uniqueId") {
+//         return c.json({ message: "Unique ID already exists" }, 400);
+//       }
+//     }
+
+//     // ✅ Role
+//     if (
+//       body.role &&
+//       !["admin", "hr", "user"].includes(body.role.toString())
+//     ) {
+//       return c.json({ message: "Invalid role" }, 400);
+//     }
+
+//     // ✅ UniqueId
+//     if (body.uniqueId !== undefined) {
+//       const uniqueId = toNumber(body.uniqueId);
+
+//       if (uniqueId === undefined) {
+//         return c.json({ message: "Unique ID must be a number" }, 400);
+//       }
+
+//       const duplicate = await checkDuplicateUser(
+//         body.email ?? user.email,
+//         uniqueId,
+//         id
+//       );
+
+//       if (duplicate === "uniqueId") {
+//         return c.json({ message: "Unique ID already exists" }, 400);
+//       }
+
+//       user.uniqueId = uniqueId;
+//       user.markModified("uniqueId");
+//     }
+
+//     // ✅ Mobile
+//     if (body.mobileNo && !/^\d{10}$/.test(body.mobileNo.toString())) {
+//       return c.json({ message: "Mobile number must be 10 digits" }, 400);
+//     }
+
+//     // ✅ Aadhar
+//     if (body.aadharNo && !/^\d{12}$/.test(body.aadharNo.toString())) {
+//       return c.json({ message: "Aadhar number must be 12 digits" }, 400);
+//     }
+
+//     // ---------------- PASSWORD ----------------
+//     if (body.password) {
+//       const pass = body.password.toString();
+
+//       if (pass.length < 6) {
+//         return c.json(
+//           { message: "Password must be at least 6 characters" },
+//           400
+//         );
+//       }
+
+//       user.password = await encryptPassword(pass);
+//       user.markModified("password");
+
+//       delete body.password;
+//     }
+
+//     // ---------------- FILE HANDLING ----------------
+
+//     const profileImageFile = formData.get("profileImage") as File | null;
+//     const otherDocsFiles = formData.getAll("otherDocuments") as File[];
+//     const otherDocsTitles = formData.getAll("otherDocumentsTitle") as string[];
+
+//     // ✅ Profile Image
+//     if (profileImageFile && profileImageFile.size > 0) {
+//       const uploaded = await saveFile(profileImageFile, "profile-images");
+//       user.profileImage = uploaded;
+//       user.markModified("profileImage");
+//     }
+
+//     // ✅ Other Documents
+//     if (otherDocsFiles.length > 0) {
+//       const otherDocuments: { title: string; file: string }[] = [];
+
+//       for (let i = 0; i < otherDocsFiles.length; i++) {
+//         const file = otherDocsFiles[i];
+//         if (!file || file.size === 0) continue;
+
+//         const title = otherDocsTitles[i] || `Document ${i + 1}`;
+//         const filePath = await saveFile(file, "documents");
+
+//         otherDocuments.push({
+//           title: title.toString(),
+//           file: filePath,
+//         });
+//       }
+
+//       user.otherDocuments = otherDocuments;
+//       user.markModified("otherDocuments");
+//     }
+
+//     // ---------------- DYNAMIC UPDATE ----------------
+
+//     Object.keys(body).forEach((key) => {
+//       if (updatableFields.includes(key)) {
+//         user.set(key, body[key]);
+//       }
+//     });
+
+//     await user.save();
+
+//     // ---------------- RESPONSE ----------------
+//     return c.json(
+//       {
+//         message: "User updated successfully",
+//         data: user,
+//       },
+//       200
+//     );
+//   } catch (error: any) {
+//     console.error("Update Error:", error);
+
+//     if (error?.name === "ValidationError") {
+//       return c.json({ message: error.message }, 400);
+//     }
+
+//     if (error?.code === 11000) {
+//       return c.json(
+//         { message: "Duplicate value found. Email or Unique ID exists." },
+//         400
+//       );
+//     }
+
+//     return c.json(
+//       {
+//         message: error?.message || "Internal Server Error",
+//       },
+//       500
+//     );
+//   }
+// };
 
 
 
@@ -784,45 +983,48 @@ export const deleteUser = async (c: Context) => {
 export const deleteMultipleUsers = async (c: Context) => {
   try {
     const body = await c.req.json();
-
     const { userIds, companyExitDate } = body;
 
-    // ✅ validation
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return c.json({ message: "userIds array is required" }, 400);
+    }
+
+    const invalidIds = userIds.filter((id) => !mongoose.Types.ObjectId.isValid(id));
+    if (invalidIds.length > 0) {
       return c.json(
-        { message: "userIds array is required" },
+        {
+          message: "Invalid user id found",
+          invalidIds,
+        },
         400
       );
     }
 
-    // ✅ users find
+    if (companyExitDate && isNaN(new Date(companyExitDate).getTime())) {
+      return c.json({ message: "Invalid companyExitDate" }, 400);
+    }
+
     const users = await User.find({
       _id: { $in: userIds },
     });
 
     if (users.length === 0) {
-      return c.json(
-        { message: "No users found" },
-        404
-      );
+      return c.json({ message: "No users found" }, 404);
     }
 
-    // ✅ add exit date before moving
     const deletedUsers = users.map((user) => {
       const obj = user.toObject();
 
       return {
         ...obj,
-        companyExitDate: companyExitDate || null,
+        companyExitDate: companyExitDate ? new Date(companyExitDate) : null,
       };
     });
 
-    // ✅ save into deleted collection
-    await DeletedUser.insertMany(deletedUsers);
+    await DeletedUser.insertMany(deletedUsers, { ordered: false });
 
-    // ✅ delete from main collection
     await User.deleteMany({
-      _id: { $in: userIds },
+      _id: { $in: users.map((u) => u._id) },
     });
 
     return c.json(
@@ -831,12 +1033,66 @@ export const deleteMultipleUsers = async (c: Context) => {
       },
       200
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Bulk Delete Error:", error);
+
+    if (error?.name === "SyntaxError") {
+      return c.json({ message: "Invalid JSON body" }, 400);
+    }
+
+    if (error?.name === "CastError") {
+      return c.json(
+        {
+          message: "Invalid ObjectId",
+          field: error.path,
+          value: error.value,
+        },
+        400
+      );
+    }
+
+    if (error?.name === "ValidationError") {
+      return c.json(
+        {
+          message: error.message,
+        },
+        400
+      );
+    }
+
+    if (error?.code === 11000) {
+      return c.json(
+        {
+          message: "User already exists in deleted users",
+          duplicateField: Object.keys(error.keyValue || {})[0],
+          duplicateValue: Object.values(error.keyValue || {})[0],
+        },
+        400
+      );
+    }
+
+    if (error?.writeErrors?.length > 0) {
+      const duplicateErrors = error.writeErrors
+        .filter((e: any) => e?.code === 11000)
+        .map((e: any) => ({
+          duplicateField: Object.keys(e.err?.keyValue || {})[0],
+          duplicateValue: Object.values(e.err?.keyValue || {})[0],
+        }));
+
+      if (duplicateErrors.length > 0) {
+        return c.json(
+          {
+            message: "Some users already exist in deleted users",
+            duplicates: duplicateErrors,
+          },
+          400
+        );
+      }
+    }
 
     return c.json(
       {
-        message: "Internal Server Error",
+        message: error?.message || "Internal Server Error",
       },
       500
     );
