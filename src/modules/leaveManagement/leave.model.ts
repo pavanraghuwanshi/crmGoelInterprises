@@ -28,7 +28,7 @@ const leaveSchema = new Schema<ILeave>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
-    name: { type: String, required: true },
+    name: { type: String },
 
     fromDate: { type: Date, required: true },
     toDate: { type: Date, required: true },
