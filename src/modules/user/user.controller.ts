@@ -9,6 +9,7 @@ import mongoose, { Types } from "mongoose";
 import { EmployeeId } from "./employeeId.model.ts";
 import { saveFile } from "../../utils/saveFile.ts";
 import { DeletedUser } from "./deleteUser.model.ts";
+import Asset from "../assets/asset.model.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -543,7 +544,14 @@ export const getUserById = async (c: Context) => {
       return c.json({ message: "User not found" }, 404);
     }
 
-    return c.json(user, 200);
+    const assets = await Asset.find({ issuedTo: new Types.ObjectId(id) })
+    .select("_id name type serialNumber issuedDate status");
+    const userObj = {
+      ...user.toObject(),
+      assets,
+    };
+
+    return c.json(userObj, 200);
   } catch (error) {
     console.error("Get User Error:", error);
     return c.json({ message: "Invalid User ID" }, 400);

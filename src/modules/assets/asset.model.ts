@@ -4,8 +4,8 @@ export interface IAsset extends Document {
   name: string;
   type: string;
   serialNumber?: string;
-  issuedBy: mongoose.Schema.Types.ObjectId;
-  issuedTo: mongoose.Schema.Types.ObjectId;
+  issuedBy: mongoose.Types.ObjectId;
+  issuedTo: mongoose.Types.ObjectId;
   issuedDate: Date;
   status: string;
   returnedDate?: Date;
