@@ -808,7 +808,7 @@ console.log("above fully working controller with roster not hours logic");
 
 export const getAttendances = async (c: Context) => {
   try {
-    const { page = "1", limit = "10", status, userId, search } = c.req.query();
+    const { page = "1", limit = "10", status, userId, search, month, year } = c.req.query();
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
 
@@ -816,6 +816,31 @@ export const getAttendances = async (c: Context) => {
     const filter: any = {};
     if (status) filter.status = status;
     if (userId) filter.userId = new Types.ObjectId(userId as string);
+
+    if (month && year) {
+      const yearNum = parseInt(year as string, 10);
+      const monthNum = parseInt(month as string, 10);
+      if (!isNaN(yearNum) && !isNaN(monthNum)) {
+        const startDate = new Date(yearNum, monthNum - 1, 1);
+        const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+        filter.date = { $gte: startDate, $lte: endDate };
+      }
+    } else if (year) {
+      const yearNum = parseInt(year as string, 10);
+      if (!isNaN(yearNum)) {
+        const startDate = new Date(yearNum, 0, 1);
+        const endDate = new Date(yearNum, 11, 31, 23, 59, 59, 999);
+        filter.date = { $gte: startDate, $lte: endDate };
+      }
+    } else if (month) {
+      const monthNum = parseInt(month as string, 10);
+      if (!isNaN(monthNum)) {
+        const currentYear = new Date().getFullYear();
+        const startDate = new Date(currentYear, monthNum - 1, 1);
+        const endDate = new Date(currentYear, monthNum, 0, 23, 59, 59, 999);
+        filter.date = { $gte: startDate, $lte: endDate };
+      }
+    }
 
     // ===== QUERY =====
     const data = await Attendance.find(filter)
