@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createAsset, getAssets, getAssetById, updateAsset, deleteAsset, deleteMultipleAssets } from "./asset.controller";
+import { createAsset, getAssets, getAssetById, updateAsset, deleteAsset, deleteMultipleAssets, unassignAsset } from "./asset.controller";
 import { verifyToken } from "../../middleware/auth.middleware";
 
 const assetRoutes = new Hono();
@@ -13,6 +13,6 @@ assetRoutes.get("/:id", getAssetById);
 assetRoutes.patch("/:id", updateAsset);
 assetRoutes.delete("/:id", deleteAsset);
 assetRoutes.post("/delete-multiple", deleteMultipleAssets);
-
+assetRoutes.post("/unassign/:id", unassignAsset);
 
 export default assetRoutes;

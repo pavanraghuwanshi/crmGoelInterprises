@@ -186,3 +186,31 @@ export const deleteMultipleAssets = async (c: Context) => {
     return c.json({ error: error.message }, 500);
   }
 };
+
+export const unassignAsset = async (c: Context) => {
+  try {
+    const id = c.req.param("id");
+    const updatedAsset = await Asset.findByIdAndUpdate(
+      id,
+      {
+        $unset: { issuedTo: 1 },
+        $set: {
+          status: "Returned",
+          returnedDate: new Date(),
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedAsset) {
+      return c.json({ error: "Asset not found" }, 404);
+    }
+
+    return c.json({
+      message: "Asset unassigned successfully",
+      data: updatedAsset,
+    });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};

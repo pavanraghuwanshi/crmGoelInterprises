@@ -978,6 +978,20 @@ export const deleteUser = async (c: Context) => {
     if (!user) {
       return c.json({ message: "User not found" }, 404);
     }
+
+    // Check if user has assigned assets
+    const assignedAssets = await Asset.find({ issuedTo: new Types.ObjectId(id) })
+      .select("_id name type serialNumber issuedDate status");
+    if (assignedAssets.length > 0) {
+      return c.json(
+        {
+          message: "Cannot delete user because they have assigned assets. Please unassign the assets first.",
+          assets: assignedAssets,
+        },
+        400
+      );
+    }
+
     const userObj = user.toObject() as any;
 
     // 👉 Save into DeletedUser collection
@@ -1029,6 +1043,19 @@ export const deleteMultipleUsers = async (c: Context) => {
 
     if (users.length === 0) {
       return c.json({ message: "No users found" }, 404);
+    }
+
+    // Check if any of the selected users have assigned assets
+    const assignedAssets = await Asset.find({ issuedTo: { $in: users.map((u) => u._id) } })
+      .select("_id name type serialNumber issuedDate status issuedTo");
+    if (assignedAssets.length > 0) {
+      return c.json(
+        {
+          message: "Cannot delete users because one or more users have assigned assets. Please unassign the assets first.",
+          assets: assignedAssets,
+        },
+        400
+      );
     }
 
     const deletedUsers = users.map((user) => {
