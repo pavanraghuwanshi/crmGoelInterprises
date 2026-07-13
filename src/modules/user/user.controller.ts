@@ -412,6 +412,7 @@ export const getUsers = async (c: Context) => {
     const gender = c.req.query("gender");
     const designationId = c.req.query("designationId");
     const departmentId = c.req.query("departmentId");
+    const attendancePolicyStatus = c.req.query("attendancePolicyStatus");
 
     const skip = (page - 1) * limit;
 
@@ -433,6 +434,13 @@ export const getUsers = async (c: Context) => {
     // ✅ department filter
     if (departmentId && mongoose.Types.ObjectId.isValid(departmentId)) {
       filter.departmentId = new mongoose.Types.ObjectId(departmentId);
+    }
+
+    // ✅ attendance policy status filter
+    if (attendancePolicyStatus === "assigned") {
+      filter.attendancePolicyId = { $ne: null };
+    } else if (attendancePolicyStatus === "not_assigned") {
+      filter.attendancePolicyId = null;
     }
 
     if (gender) {
@@ -1199,6 +1207,7 @@ export const getUsersDropdown = async (c: Context) => {
         $project: {
           _id: 1,
           name: 1,
+          otherName: 1,
           employeeId: "$employeeData.employeeId",
           uniqueId: 1
         }

@@ -38,7 +38,7 @@ export const assignAttendancePolicyBulk = async (c: Context) => {
           attendancePolicyId: attendancePolicyId ,
           attendancePolicyStartDate: startDate ? new Date(startDate) : null,
           attendancePolicyEndDate: endDate ? new Date(endDate) : null,
-          updatedAt: new Date(),
+          rosterUpdate: new Date(),
         }
       }
     );
@@ -110,7 +110,7 @@ export const getRosterUsers = async (c: Context) => {
       .select("-password") // hide password
       .skip(skip)
       .limit(limit)
-      .sort({ updatedAt: 1 });
+      .sort({ rosterUpdate: -1 });
 
     // ✅ total count
     const total = await User.countDocuments(filter);
@@ -172,7 +172,7 @@ export const update24HourShiftBulk = async (c: Context) => {
       {
         $set: {
           is24HourShift: is24HourShift === true,
-          updatedAt: new Date(),
+          rosterUpdate: new Date(),
         },
       }
     );
