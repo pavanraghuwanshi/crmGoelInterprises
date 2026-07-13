@@ -81,7 +81,6 @@ export const getRosterUsers = async (c: Context) => {
 
     // ✅ base filter
     let filter: any = {
-      attendancePolicyId: { $exists: true, $ne: null },
       attendancePolicyStartDate: { $type: "date" },
       attendancePolicyEndDate: { $type: "date" }
     };
