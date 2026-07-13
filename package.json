@@ -13,9 +13,9 @@
     "pdf2json": "^4.0.2"
   },
   "scripts": {
-    "start": "bun run src/server.ts",
-    "dev": "bun --watch src/server.ts",
-    "create:admin": "bun run src/scripts/createAdmin.ts"
+    "start": "bun --preload ./patch-v8.js run src/server.ts",
+    "dev": "bun --preload ./patch-v8.js --watch src/server.ts",
+    "create:admin": "bun --preload ./patch-v8.js run src/scripts/createAdmin.ts"
   },
   "peerDependencies": {
     "typescript": "^5"

@@ -8,11 +8,7 @@ import { Types } from "mongoose";
 import Leave from "../leaveManagement/leave.model";
 import e from "express";
 
-
-
-
-                             // --- Attendance Policy controllers Start ---
-
+// --- Attendance Policy controllers Start ---
 
 export const createAttendancePolicy = async (c: Context) => {
   try {
@@ -20,7 +16,10 @@ export const createAttendancePolicy = async (c: Context) => {
     const body = await c.req.json();
     const policy = new AttendancePolicy({ ...body, createdBy: user.id });
     await policy.save();
-    return c.json({ message: "Attendance policy created successfully", policy }, 201);
+    return c.json(
+      { message: "Attendance policy created successfully", policy },
+      201,
+    );
   } catch (error: any) {
     return c.json({ message: error.message }, 500);
   }
@@ -28,7 +27,10 @@ export const createAttendancePolicy = async (c: Context) => {
 
 export const getAttendancePolicies = async (c: Context) => {
   try {
-    const policies = await AttendancePolicy.find().populate("createdBy", "name email");
+    const policies = await AttendancePolicy.find().populate(
+      "createdBy",
+      "name email",
+    );
     return c.json({ policies }, 200);
   } catch (error: any) {
     return c.json({ message: error.message }, 500);
@@ -43,7 +45,7 @@ export const updateAttendancePolicy = async (c: Context) => {
     const updatedPolicy = await AttendancePolicy.findByIdAndUpdate(
       id,
       { $set: body },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedPolicy) {
@@ -51,8 +53,11 @@ export const updateAttendancePolicy = async (c: Context) => {
     }
 
     return c.json(
-      { message: "Attendance policy updated successfully", policy: updatedPolicy },
-      200
+      {
+        message: "Attendance policy updated successfully",
+        policy: updatedPolicy,
+      },
+      200,
     );
   } catch (error: any) {
     return c.json({ message: error.message }, 500);
@@ -69,22 +74,13 @@ export const deleteAttendancePolicy = async (c: Context) => {
       return c.json({ message: "Attendance policy not found" }, 404);
     }
 
-    return c.json(
-      { message: "Attendance policy deleted successfully" },
-      200
-    );
+    return c.json({ message: "Attendance policy deleted successfully" }, 200);
   } catch (error: any) {
     return c.json({ message: error.message }, 500);
   }
 };
 
-                                   // --- Attendance Policy controllers end ---
-
-
-
-
-
-
+// --- Attendance Policy controllers end ---
 
 // --- Attendance Biometric File Upload Processing ---
 
@@ -96,7 +92,6 @@ const adjustIST = (dt: Date | null) => {
   newDt.setMinutes(newDt.getMinutes() + 30);
   return newDt;
 };
-
 
 export const uploadBiometricData = async (c: Context) => {
   try {
@@ -130,10 +125,7 @@ export const uploadBiometricData = async (c: Context) => {
       : await AttendancePolicy.findOne().sort({ createdAt: -1 });
 
     if (!activePolicy) {
-      return c.json(
-        { message: "No active attendance policy found" },
-        400
-      );
+      return c.json({ message: "No active attendance policy found" }, 400);
     }
 
     // ===== GROUP DATA BY EN NO AND DATE (IST LOCAL DATE) =====
@@ -204,16 +196,12 @@ export const uploadBiometricData = async (c: Context) => {
 
     // ===== FETCH HOLIDAYS =====
     const allDates = Array.from(map.values()).flatMap((datesObj) =>
-      Array.from(datesObj.keys()).map((k) => new Date(k))
+      Array.from(datesObj.keys()).map((k) => new Date(k)),
     );
 
-    const startDate = new Date(
-      Math.min(...allDates.map((d) => d.getTime()))
-    );
+    const startDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
 
-    const endDate = new Date(
-      Math.max(...allDates.map((d) => d.getTime()))
-    );
+    const endDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
 
     const holidays = await CalendarDay.find({
       date: { $gte: startDate, $lte: endDate },
@@ -231,7 +219,7 @@ export const uploadBiometricData = async (c: Context) => {
           "-" +
           String(d.getDate()).padStart(2, "0")
         );
-      })
+      }),
     );
 
     // ===== PROCESS ATTENDANCE =====
@@ -243,91 +231,69 @@ export const uploadBiometricData = async (c: Context) => {
 
       if (!userId) continue;
 
-      const policy: any =
-        userPolicyMap.get(enNo) || activePolicy;
+      const policy: any = userPolicyMap.get(enNo) || activePolicy;
 
-      const [shiftInHours, shiftInMinutes] = (
-        policy.shiftInTime || "09:00"
-      )
+      const [shiftInHours, shiftInMinutes] = (policy.shiftInTime || "09:00")
         .split(":")
         .map(Number);
 
-      const [shiftOutHours, shiftOutMinutes] = (
-        policy.shiftOutTime || "18:00"
-      )
+      const [shiftOutHours, shiftOutMinutes] = (policy.shiftOutTime || "18:00")
         .split(":")
         .map(Number);
 
       for (const [dateKey, punches] of datesObj.entries()) {
         punches.sort((a, b) => a.getTime() - b.getTime());
 
-        let punchIn =  punches.length > 0 ? punches[0] : null;
+        let punchIn = punches.length > 0 ? punches[0] : null;
 
         // const punchOut =
         //   punches.length > 1
         //     ? punches[punches.length - 1]
         //     : null;
 
+        //  new added section start here
 
+        const currentUser = users.find((u: any) => u.uniqueId === enNo);
 
-        //  new added section start here 
-
-        const currentUser = users.find(
-          (u: any) => u.uniqueId === enNo
-        );
-
-              let punchOut =
-        punches.length > 1
-          ? punches[punches.length - 1]
-          : null;
-
-      if (
-        !currentUser?.is24HourShift &&
-        punches.length === 1 &&
-        shiftInHours >= 5 &&
-        shiftInHours <= 12
-      ) {
-        punchOut = punches[0];
-        punchIn = null;
-      }
-
-      // ✅ 24 HOUR SHIFT LOGIC
-      if (
-        !punchOut &&
-        currentUser?.is24HourShift
-      ) {
-        const nextDate = new Date(dateKey);
-
-        nextDate.setDate(nextDate.getDate() + 1);
-
-        const nextDateKey =
-          nextDate.getFullYear() +
-          "-" +
-          String(nextDate.getMonth() + 1).padStart(2, "0") +
-          "-" +
-          String(nextDate.getDate()).padStart(2, "0");
-
-        const nextDayPunches =
-          datesObj.get(nextDateKey);
+        let punchOut = punches.length > 1 ? punches[punches.length - 1] : null;
 
         if (
-          nextDayPunches &&
-          nextDayPunches.length > 0
+          !currentUser?.is24HourShift &&
+          punches.length === 1 &&
+          shiftInHours >= 5 &&
+          shiftInHours <= 12
         ) {
-          nextDayPunches.sort(
-            (a, b) => a.getTime() - b.getTime()
-          );
-
-          // punchOut = nextDayPunches[0];
-          punchOut = nextDayPunches.shift() || null;
+          punchOut = punches[0];
+          punchIn = null;
         }
-      }
 
-//  end here 
+        // ✅ 24 HOUR SHIFT LOGIC
+        if (!punchOut && currentUser?.is24HourShift) {
+          const nextDate = new Date(dateKey);
+
+          nextDate.setDate(nextDate.getDate() + 1);
+
+          const nextDateKey =
+            nextDate.getFullYear() +
+            "-" +
+            String(nextDate.getMonth() + 1).padStart(2, "0") +
+            "-" +
+            String(nextDate.getDate()).padStart(2, "0");
+
+          const nextDayPunches = datesObj.get(nextDateKey);
+
+          if (nextDayPunches && nextDayPunches.length > 0) {
+            nextDayPunches.sort((a, b) => a.getTime() - b.getTime());
+
+            // punchOut = nextDayPunches[0];
+            punchOut = nextDayPunches.shift() || null;
+          }
+        }
+
+        //  end here
 
         // ===== STATUS =====
-        let status: "Present" | "Absent" | "Half-Day" =
-          "Absent";
+        let status: "Present" | "Absent" | "Half-Day" = "Absent";
 
         // ===== WORKED MINUTES & OVERTIME =====
         let totalWorkedMinutes = 0;
@@ -336,51 +302,38 @@ export const uploadBiometricData = async (c: Context) => {
 
         // const requiredMinutes = 8 * 60;
         const shiftInDate = new Date(dateKey);
-      shiftInDate.setHours(shiftInHours, shiftInMinutes, 0, 0);
+        shiftInDate.setHours(shiftInHours, shiftInMinutes, 0, 0);
 
-      const shiftOutDate = new Date(dateKey);
-      shiftOutDate.setHours(shiftOutHours, shiftOutMinutes, 0, 0);
+        const shiftOutDate = new Date(dateKey);
+        shiftOutDate.setHours(shiftOutHours, shiftOutMinutes, 0, 0);
 
-      if (shiftOutDate <= shiftInDate) {
-        shiftOutDate.setDate(shiftOutDate.getDate() + 1);
-      }
+        if (shiftOutDate <= shiftInDate) {
+          shiftOutDate.setDate(shiftOutDate.getDate() + 1);
+        }
 
-      const requiredMinutes = (shiftOutDate.getTime() - shiftInDate.getTime()) / 60000;
-      const bufferMins = policy.attendanceBufferMins || 0;
+        const requiredMinutes =
+          (shiftOutDate.getTime() - shiftInDate.getTime()) / 60000;
+        const bufferMins = policy.attendanceBufferMins || 0;
 
         if (punchIn && punchOut) {
-          totalWorkedMinutes =
-            (punchOut.getTime() - punchIn.getTime()) /
-            60000;
+          totalWorkedMinutes = (punchOut.getTime() - punchIn.getTime()) / 60000;
 
-          if (totalWorkedMinutes >= (requiredMinutes - bufferMins)) {
+          if (totalWorkedMinutes >= requiredMinutes - bufferMins) {
             status = "Present";
 
             const isHoliday = holidaySet.has(dateKey);
 
             if (isHoliday) {
-              overtimeHours = Number(
-                (totalWorkedMinutes / 60).toFixed(2)
-              );
+              overtimeHours = Number((totalWorkedMinutes / 60).toFixed(2));
 
-              overtimePay =
-                overtimeHours *
-                policy.overtimeHourlyRate;
+              overtimePay = overtimeHours * policy.overtimeHourlyRate;
             } else {
-              const extraMins =
-                totalWorkedMinutes - requiredMinutes;
+              const extraMins = totalWorkedMinutes - requiredMinutes;
 
-              if (
-                extraMins > 0 &&
-                extraMins >= policy.overtimeThresholdMins
-              ) {
-                overtimeHours = Number(
-                  (extraMins / 60).toFixed(2)
-                );
+              if (extraMins > 0 && extraMins >= policy.overtimeThresholdMins) {
+                overtimeHours = Number((extraMins / 60).toFixed(2));
 
-                overtimePay =
-                  overtimeHours *
-                  policy.overtimeHourlyRate;
+                overtimePay = overtimeHours * policy.overtimeHourlyRate;
               }
             }
           } else {
@@ -430,7 +383,7 @@ export const uploadBiometricData = async (c: Context) => {
         message: "Attendance processed successfully",
         recordsProcessed: ops.length,
       },
-      200
+      200,
     );
   } catch (error: any) {
     console.error(error);
@@ -439,14 +392,12 @@ export const uploadBiometricData = async (c: Context) => {
       {
         message: error.message,
       },
-      500
+      500,
     );
   }
 };
 
-
 // ===== GET ALL ATTENDANCES WITH FILTERS & PAGINATION =====
-
 
 console.log("above fully working controller with roster not hours logic");
 
@@ -621,9 +572,7 @@ console.log("above fully working controller with roster not hours logic");
 //         //     ? punches[punches.length - 1]
 //         //     : null;
 
-
-
-//         //  new added section start here 
+//         //  new added section start here
 
 //         const currentUser = users.find(
 //           (u: any) => u.uniqueId === enNo
@@ -666,7 +615,7 @@ console.log("above fully working controller with roster not hours logic");
 //         }
 //       }
 
-// //  end here 
+// //  end here
 
 //         // ===== STATUS =====
 //         let status: "Present" | "Absent" | "Half-Day" =
@@ -802,13 +751,17 @@ console.log("above fully working controller with roster not hours logic");
 //   }
 // };
 
-
-
-
-
 export const getAttendances = async (c: Context) => {
   try {
-    const { page = "1", limit = "10", status, userId, search, month, year } = c.req.query();
+    const {
+      page = "1",
+      limit = "10",
+      status,
+      userId,
+      search,
+      month,
+      year,
+    } = c.req.query();
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
 
@@ -871,7 +824,7 @@ export const getAttendances = async (c: Context) => {
 
     return c.json(
       { data: filteredData, total, page: pageNum, limit: limitNum },
-      200
+      200,
     );
   } catch (error: any) {
     console.error(error);
@@ -879,9 +832,7 @@ export const getAttendances = async (c: Context) => {
   }
 };
 
-
 // ===== GET ATTENDANCES (DEFAULT TODAY) WITH DATE FILTER + SUMMARY =====
-
 
 export const getAttendancesWithSummary = async (c: Context) => {
   try {
@@ -935,7 +886,6 @@ export const getAttendancesWithSummary = async (c: Context) => {
         });
       }
     }
-    
 
     if (userId) {
       searchFilter._id = new Types.ObjectId(userId);
@@ -943,7 +893,9 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     // ===== ALL USERS (FOR SUMMARY) =====
     const allUsers = await User.find(baseUserFilter)
-      .select("_id name email companyId designation uniqueId employeeObjId otherName department")
+      .select(
+        "_id name email companyId designation uniqueId employeeObjId otherName department",
+      )
       .populate("companyId", "name")
       .populate("employeeObjId", "employeeId");
 
@@ -952,13 +904,13 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     // ===== FILTERED USERS (FOR DATA) =====
     const filteredUsers = await User.find(searchFilter)
-      .select("_id name email companyId designation uniqueId employeeObjId otherName department")
+      .select(
+        "_id name email companyId designation uniqueId employeeObjId otherName department",
+      )
       .populate("companyId", "name")
       .populate("employeeObjId", "employeeId");
 
-    const filteredUserIds = filteredUsers.map((u) =>
-      u._id.toString()
-    );
+    const filteredUserIds = filteredUsers.map((u) => u._id.toString());
 
     // ===== ATTENDANCE =====
     const attendanceDocs = await Attendance.find({
@@ -980,9 +932,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
       toDate: { $gte: start },
     });
 
-    const leaveSet = new Set(
-      leaves.map((l) => l.userId.toString())
-    );
+    const leaveSet = new Set(leaves.map((l) => l.userId.toString()));
 
     // ===== SUMMARY =====
     let present = 0;
@@ -1001,7 +951,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
         const hasPunchIn = !!attendance.punchIn;
         const hasPunchOut = !!attendance.punchOut;
 
-        if (attendance.status === "Absent") {
+        if (attendance.status === "Absent" && !hasPunchIn && !hasPunchOut) {
           absent++;
           finalAllUsers.push({
             user: {
@@ -1012,6 +962,8 @@ export const getAttendancesWithSummary = async (c: Context) => {
               company: user.companyId,
               uniqueId: user.uniqueId,
               employeeId: (user.employeeObjId as any)?.employeeId || null,
+              otherName: user.otherName,
+              department: user.department,
             },
             attendance,
             status: "Absent",
@@ -1036,9 +988,25 @@ export const getAttendancesWithSummary = async (c: Context) => {
             attendance,
             status: attendance.status,
           });
+        } else if (!hasPunchIn || !hasPunchOut) {
+          notMarked++;
+          finalAllUsers.push({
+            user: {
+              _id: user._id,
+              name: user.name,
+              email: user.email,
+              designation: user.designation,
+              company: user.companyId,
+              uniqueId: user.uniqueId,
+              employeeId: (user.employeeObjId as any)?.employeeId || null,
+              otherName: user.otherName,
+              department: user.department,
+            },
+            attendance,
+            status: "Not Marked",
+          });
         } else if (
           attendance.status === "Present" ||
-          // attendance.status === "Half-Day" ||
           (hasPunchIn && hasPunchOut)
         ) {
           present++;
@@ -1116,7 +1084,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     // ===== DATA FILTER =====
     let finalFiltered = finalAllUsers.filter((u) =>
-      filteredUserIds.includes(u.user._id.toString())
+      filteredUserIds.includes(u.user._id.toString()),
     );
 
     // if (status) {
@@ -1127,13 +1095,9 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     if (status) {
       const statuses =
-        status === "Present"
-          ? ["Present", "Half-Day"]
-          : [status];
-    
-      finalFiltered = finalFiltered.filter((u) =>
-        statuses.includes(u.status)
-      );
+        status === "Present" ? ["Present", "Half-Day"] : [status];
+
+      finalFiltered = finalFiltered.filter((u) => statuses.includes(u.status));
     }
 
     // ===== PAGINATION =====
@@ -1141,7 +1105,7 @@ export const getAttendancesWithSummary = async (c: Context) => {
 
     const paginated = finalFiltered.slice(
       (pageNum - 1) * limitNum,
-      pageNum * limitNum
+      pageNum * limitNum,
     );
 
     // ===== RESPONSE =====
@@ -1161,14 +1125,13 @@ export const getAttendancesWithSummary = async (c: Context) => {
         startDate: start,
         endDate: end,
       },
-      200
+      200,
     );
   } catch (error: any) {
     console.error(error);
     return c.json({ message: error.message }, 500);
   }
 };
- 
 
 //  ====== Update Attendance Status Of Single User
 
@@ -1219,7 +1182,6 @@ export const updateAttendanceStatus = async (c: Context) => {
     return c.json({ message: error.message }, 500);
   }
 };
-
 
 //  ====== Update Attendance Status Of Multiple User
 export const updateMultipleAttendanceStatus = async (c: Context) => {
@@ -1312,18 +1274,11 @@ export const updateMultipleAttendanceStatus = async (c: Context) => {
   }
 };
 
-
-
 //    Get User List For mark Manual Attendance
 
 export const getManualAttendancePendingUsers = async (c: Context) => {
   try {
-    const {
-      date,
-      page = "1",
-      limit = "10",
-      search = "",
-    } = c.req.query();
+    const { date, page = "1", limit = "10", search = "" } = c.req.query();
 
     if (!date) {
       return c.json({ message: "date query param required" }, 400);
@@ -1434,16 +1389,13 @@ export const getManualAttendancePendingUsers = async (c: Context) => {
       totalPages: Math.ceil(total / limitNum),
       data: paginatedData,
     });
-
   } catch (error: any) {
     console.error(error);
     return c.json({ message: error.message }, 500);
   }
 };
 
-
-
-//    Mark Attendance For Any Date 
+//    Mark Attendance For Any Date
 
 export const manualMarkAttendance = async (c: Context) => {
   try {
@@ -1452,20 +1404,14 @@ export const manualMarkAttendance = async (c: Context) => {
     const { userId, date, status, punchIn, punchOut } = body;
 
     if (!userId || !date || !status) {
-      return c.json(
-        { message: "userId, date, status required" },
-        400
-      );
+      return c.json({ message: "userId, date, status required" }, 400);
     }
 
     // ===== CHECK USER EXISTS =====
     const user = await User.findById(userId);
 
     if (!user) {
-      return c.json(
-        { message: "User not found" },
-        404
-      );
+      return c.json({ message: "User not found" }, 404);
     }
 
     // ===== VALID STATUS =====
@@ -1474,14 +1420,11 @@ export const manualMarkAttendance = async (c: Context) => {
       "Absent",
       "Half-Day",
       "WeeklyOff",
-      "Holiday"
+      "Holiday",
     ];
 
     if (!allowedStatuses.includes(status)) {
-      return c.json(
-        { message: "Invalid status" },
-        400
-      );
+      return c.json({ message: "Invalid status" }, 400);
     }
 
     let totalWorkedMinutes = 0;
@@ -1533,17 +1476,14 @@ export const manualMarkAttendance = async (c: Context) => {
         : "Attendance created successfully",
       data: attendance,
     });
-
   } catch (error: any) {
     console.error(error);
     return c.json({ message: error.message }, 500);
   }
 };
 
-
-
-    // ===== MONTHLY DATE WISE ATTENDANCE COUNT =====
-    // query: ?year=2026&month=4
+// ===== MONTHLY DATE WISE ATTENDANCE COUNT =====
+// query: ?year=2026&month=4
 
 export const getAttendanceCountByMonth = async (c: Context) => {
   try {
@@ -1552,7 +1492,7 @@ export const getAttendanceCountByMonth = async (c: Context) => {
     if (!year || !month) {
       return c.json(
         { message: "year and month query params are required" },
-        400
+        400,
       );
     }
 
@@ -1578,7 +1518,7 @@ export const getAttendanceCountByMonth = async (c: Context) => {
     }).select("date dayType description");
 
     const holidaySet = new Set(
-      holidays.map((h) => h.date.toISOString().split("T")[0])
+      holidays.map((h) => h.date.toISOString().split("T")[0]),
     );
 
     const map: Record<
@@ -1613,9 +1553,10 @@ export const getAttendanceCountByMonth = async (c: Context) => {
     for (const item of records) {
       const d = new Date(item.date);
 
-      const dateStr = `${d.getFullYear()}-${String(
-        d.getMonth() + 1
-      ).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+        2,
+        "0",
+      )}-${String(d.getDate()).padStart(2, "0")}`;
 
       const dayData = map[dateStr];
       if (!dayData) continue;
@@ -1646,26 +1587,13 @@ export const getAttendanceCountByMonth = async (c: Context) => {
         totalUsers,
         data: result,
       },
-      200
+      200,
     );
   } catch (error: any) {
     console.error(error);
     return c.json({ message: error.message }, 500);
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // ===== GET PARTICULAR USER MONTH-WISE ATTENDANCE =====
 export const getUserMonthlyAttendance = async (c: Context) => {
@@ -1692,11 +1620,6 @@ export const getUserMonthlyAttendance = async (c: Context) => {
     return c.json({ message: error.message }, 500);
   }
 };
-
-
-
-
-
 
 //   DashBoard Data Api
 
@@ -1751,9 +1674,7 @@ export const getTodayAttendanceSummary = async (c: Context) => {
       toDate: { $gte: start },
     });
 
-    const leaveSet = new Set(
-      leaveData.map((l) => l.userId.toString())
-    );
+    const leaveSet = new Set(leaveData.map((l) => l.userId.toString()));
 
     // ===== FINAL COUNT =====
     let present = 0;
@@ -1801,7 +1722,7 @@ export const getTodayAttendanceSummary = async (c: Context) => {
         onLeave,
         notMarked,
       },
-      200
+      200,
     );
   } catch (error: any) {
     console.error(error);
