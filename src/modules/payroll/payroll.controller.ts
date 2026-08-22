@@ -97,7 +97,7 @@ export const getPayrollPolicies = async (c: Context) => {
     const skip = (page - 1) * limit;
 
     const filter: any = {
-      createdBy: user.id,
+      // createdBy: user.id,
     };
 
     if (search) {
